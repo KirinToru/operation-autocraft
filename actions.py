@@ -4,6 +4,7 @@ import mss
 import numpy as np
 import config
 from logger import log_info, log_error
+from lang import STRINGS
 
 # Windows API
 user32 = ctypes.windll.user32
@@ -52,15 +53,16 @@ def get_mouse_pos():
 
 def distribute_likes():
     try:
-        log_info("actions", "Points gauge full! Starting to distribute likes...")
+        lang = STRINGS[config.LANGUAGE]
+        log_info("actions", lang["distr_start"])
         orig_x, orig_y = get_mouse_pos()
         
         try:
             user32.BlockInput(True)
-            for i in range(3):
+            for i in range(config.NUM_PLAYERS):
                 # If coordinates are (0,0), it means not calibrated
                 if config.PLAYER_POSITIONS[i] == (0, 0) or config.LIKE_POSITIONS[i] == (0, 0):
-                    log_info("actions", f"Player {i+1} not calibrated, skipping.")
+                    log_info("actions", lang["player_uncalibrated"].format(i+1))
                     continue
                     
                 px, py = config.PLAYER_POSITIONS[i]
@@ -77,19 +79,21 @@ def distribute_likes():
                 g = np.mean(btn_img[:, :, 1])
                 r = np.mean(btn_img[:, :, 2])
                 
-                is_blue = (b > r + 30) and (g > r + 20)
+                # Check for specific like color: RGB(117, 186, 219)
+                is_like_color = abs(b - 219) < 25 and abs(g - 186) < 25 and abs(r - 117) < 25
                 
-                if is_blue:
-                    log_info("actions", f"Distributing points to player nr {i+1}")
+                if is_like_color:
+                    log_info("actions", lang["distr_points_to"].format(i+1))
                     click(like_btn_x, like_btn_y)
                     time.sleep(0.3)
                     break
                 else:
-                    log_info("actions", f"Player nr {i+1} cannot receive likes, looking further.")
+                    log_info("actions", lang["cannot_receive"].format(i+1))
         finally:
             user32.SetCursorPos(orig_x, orig_y)
             user32.BlockInput(False)
             
-        log_info("actions", "Finished distributing likes.")
+        log_info("actions", lang["distr_finish"])
     except Exception as e:
         log_error("actions.py: distribute_likes", e)
+
