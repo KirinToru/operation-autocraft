@@ -184,16 +184,29 @@ def main_loop():
                         if now - config.last_gauge_check_at >= config.GAUGE_CHECK_INTERVAL:
                             config.last_gauge_check_at = now
                             cyan_pixels = vision.get_gauge_fullness()
-                            if cyan_pixels > config.GAUGE_THRESHOLD: 
-                                actions.distribute_likes()
-                                time.sleep(1)
-                                now = time.time()
+                            
+                            # Start distributing when threshold is reached
+                            if not config.is_distributing and cyan_pixels > config.GAUGE_THRESHOLD:
+                                config.is_distributing = True
+                                
+                            # Keep distributing until gauge is completely empty
+                            if config.is_distributing:
+                                if cyan_pixels > 50:
+                                    actions.distribute_likes()
+                                    time.sleep(1)
+                                    now = time.time()
+                                else:
+                                    # Gauge is empty, stop distributing and start accumulating again
+                                    config.is_distributing = False
                     else:
                         # IMMEDIATE MODE
                         if now - config.last_gauge_check_at >= config.LIKE_CHECK_INTERVAL:
                             config.last_gauge_check_at = now
-                            actions.distribute_likes()
-                            now = time.time()
+                            cyan_pixels = vision.get_gauge_fullness()
+                            # Distribute only if there is at least 1 like in the gauge (e.g. > 50 pixels)
+                            if cyan_pixels > 50:
+                                actions.distribute_likes()
+                                now = time.time()
 
                 img = np.array(sct.grab(config.BBOX))
                 

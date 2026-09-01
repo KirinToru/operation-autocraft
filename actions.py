@@ -79,8 +79,7 @@ def distribute_likes():
                 g = np.mean(btn_img[:, :, 1])
                 r = np.mean(btn_img[:, :, 2])
                 
-                # Check for specific like color: RGB(117, 186, 219)
-                is_like_color = abs(b - 219) < 25 and abs(g - 186) < 25 and abs(r - 117) < 25
+                is_like_color = (b > r + 30) and (g > r + 20)
                 
                 if is_like_color:
                     log_info("actions", lang["distr_points_to"].format(i+1))

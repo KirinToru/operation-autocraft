@@ -18,7 +18,8 @@ AUTO_J_ENABLED = True
 AUTO_LIKE_ENABLED = True
 
 # Accumulated points threshold (when LIKE_MODE is "ACCUMULATED")
-GAUGE_THRESHOLD = 2000
+GAUGE_THRESHOLD = 950
+is_distributing = False
 
 # Saved positions for likes distribution (up to 4 players)
 PLAYER_POSITIONS = [(0,0), (0,0), (0,0), (0,0)]
