@@ -60,51 +60,47 @@ def show_diagnostics():
     except Exception as e:
         log_error("main.py: show_diagnostics", e)
 
-calibration_state = 0
+def calibrate_p1():
+    mx, my = actions.get_mouse_pos()
+    config.PLAYER_POSITIONS[0] = (mx, my)
+    print(f"Saved Player 1 at {mx}, {my}")
+    config.save_settings()
 
-def run_calibration():
-    global calibration_state
-    try:
-        mx, my = actions.get_mouse_pos()
-        if calibration_state == 0:
-            print("\n" + "="*40)
-            print("CALIBRATION MODE STARTED!")
-            print("Step 1: Hover over PLAYER 1 on the list and press F9.")
-            print("="*40 + "\n")
-            calibration_state = 1
-        elif calibration_state == 1:
-            config.PLAYER_POSITIONS[0] = (mx, my)
-            print("Saved Player 1. Now hover over LIKE BUTTON for Player 1 and press F9.")
-            calibration_state = 2
-        elif calibration_state == 2:
-            config.LIKE_POSITIONS[0] = (mx, my)
-            print("Saved Like 1. Now hover over PLAYER 2 and press F9.")
-            calibration_state = 3
-        elif calibration_state == 3:
-            config.PLAYER_POSITIONS[1] = (mx, my)
-            print("Saved Player 2. Now hover over LIKE BUTTON for Player 2 and press F9.")
-            calibration_state = 4
-        elif calibration_state == 4:
-            config.LIKE_POSITIONS[1] = (mx, my)
-            print("Saved Like 2. Now hover over PLAYER 3 and press F9.")
-            calibration_state = 5
-        elif calibration_state == 5:
-            config.PLAYER_POSITIONS[2] = (mx, my)
-            print("Saved Player 3. Now hover over LIKE BUTTON for Player 3 and press F9.")
-            calibration_state = 6
-        elif calibration_state == 6:
-            config.LIKE_POSITIONS[2] = (mx, my)
-            print("Saved Like 3. FINAL STEP: Ensure gauge is 10/10 and press F9.")
-            calibration_state = 7
-        elif calibration_state == 7:
-            cyan_px = vision.get_gauge_fullness()
-            config.GAUGE_THRESHOLD = max(10, cyan_px - 200)
-            print(f"Gauge set to {config.GAUGE_THRESHOLD} (Read: {cyan_px}). Calibration complete!")
-            config.save_settings()
-            calibration_state = 0
-            print("Settings saved to settings.json.")
-    except Exception as e:
-        log_error("main.py: run_calibration", e)
+def calibrate_l1():
+    mx, my = actions.get_mouse_pos()
+    config.LIKE_POSITIONS[0] = (mx, my)
+    print(f"Saved Like 1 at {mx}, {my}")
+    config.save_settings()
+
+def calibrate_p2():
+    mx, my = actions.get_mouse_pos()
+    config.PLAYER_POSITIONS[1] = (mx, my)
+    print(f"Saved Player 2 at {mx}, {my}")
+    config.save_settings()
+
+def calibrate_l2():
+    mx, my = actions.get_mouse_pos()
+    config.LIKE_POSITIONS[1] = (mx, my)
+    print(f"Saved Like 2 at {mx}, {my}")
+    config.save_settings()
+
+def calibrate_p3():
+    mx, my = actions.get_mouse_pos()
+    config.PLAYER_POSITIONS[2] = (mx, my)
+    print(f"Saved Player 3 at {mx}, {my}")
+    config.save_settings()
+
+def calibrate_l3():
+    mx, my = actions.get_mouse_pos()
+    config.LIKE_POSITIONS[2] = (mx, my)
+    print(f"Saved Like 3 at {mx}, {my}")
+    config.save_settings()
+
+def calibrate_gauge():
+    cyan_px = vision.get_gauge_fullness()
+    config.GAUGE_THRESHOLD = max(10, cyan_px - 200)
+    print(f"Gauge threshold set to {config.GAUGE_THRESHOLD} (Read: {cyan_px})")
+    config.save_settings()
 
 def toggle_auto_l():
     config.AUTO_L_ENABLED = not config.AUTO_L_ENABLED
@@ -126,14 +122,20 @@ def toggle_music():
         ctypes.windll.winmm.mciSendStringW("pause anthem", None, 0, 0)
     log_info("main", f"Music is now {'ON' if config.MUSIC_ENABLED else 'OFF'}")
 
-# Hotkey registration
 keyboard.add_hotkey('insert', toggle_automation)
 keyboard.add_hotkey('f4', toggle_music)
 keyboard.add_hotkey('f5', toggle_auto_l)
 keyboard.add_hotkey('f6', toggle_auto_j)
 keyboard.add_hotkey('f7', toggle_auto_likes)
 keyboard.add_hotkey('f8', show_diagnostics)
-keyboard.add_hotkey('f9', run_calibration)
+
+keyboard.add_hotkey('shift+1', calibrate_p1)
+keyboard.add_hotkey('shift+q', calibrate_l1)
+keyboard.add_hotkey('shift+2', calibrate_p2)
+keyboard.add_hotkey('shift+w', calibrate_l2)
+keyboard.add_hotkey('shift+3', calibrate_p3)
+keyboard.add_hotkey('shift+e', calibrate_l3)
+keyboard.add_hotkey('shift+4', calibrate_gauge)
 
 def get_resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -168,8 +170,12 @@ def main_loop():
         print("Press 'F6' to toggle Auto J (Gauge State/Repeat).")
         print("Press 'F7' to toggle Auto Likes (Distributing Points).")
         print("Press 'F8' to show diagnostics.")
-        print("Press 'F9' for CALIBRATION.")
-        print("Press 'Esc' to exit.")
+        print("\nCALIBRATION HOTKEYS:")
+        print("  Shift+1: Set Player 1    |  Shift+Q: Set Like 1")
+        print("  Shift+2: Set Player 2    |  Shift+W: Set Like 2")
+        print("  Shift+3: Set Player 3    |  Shift+E: Set Like 3")
+        print("  Shift+4: Calibrate Gauge 10/10")
+        print("\nPress 'Esc' to exit.")
         print("Waiting...\n")
 
         with mss.MSS() as sct:

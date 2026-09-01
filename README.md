@@ -1,6 +1,6 @@
-# FD-autoL
+# operation-autocraft
 
-FD-autoL is an automation script for Fallen Doll: Operation Lovecraft, designed to automatically interact with game features like distributing likes, handling hearts, and managing excitement bars. It features an interactive, on-screen calibration wizard to match any display resolution without manual code edits.
+Operation Autocraft is an automation script for Fallen Doll: Operation Lovecraft, designed to automatically interact with game features like distributing likes, handling hearts, and managing excitement bars. It features an interactive, on-screen calibration wizard to match any display resolution without manual code edits.
 
 ## Features
 
@@ -12,13 +12,19 @@ FD-autoL is an automation script for Fallen Doll: Operation Lovecraft, designed 
 
 ## Installation
 
+### Method 1: Ready-to-use Executable (Recommended)
+You can download the pre-compiled version of the bot directly from GitHub without installing Python.
+1. Go to the **Releases** section on the GitHub repository page.
+2. Download the latest `operation-autocraft.exe`.
+3. Right-click the `.exe` file and select **Run as Administrator** (required for background hotkeys to work).
+
+### Method 2: From Source Code
 Ensure you have Python installed. The script depends on `numpy`, `mss`, and `keyboard` libraries.
-If you prefer a pre-compiled version, use the executable generated in the `dist` folder.
 
 1. Clone or download the repository.
-2. Install requirements (if running from source):
+2. Install requirements:
    pip install mss keyboard numpy
-3. Run `main.py` as Administrator (required for `keyboard` hooks to work in background).
+3. Run `main.py` as Administrator:
    python main.py
 
 ## Hotkeys
@@ -31,18 +37,19 @@ The script is controlled entirely via background hotkeys:
 - `F6`: Toggle Auto-J (Bars) feature.
 - `F7`: Toggle Auto-Likes feature.
 - `F8`: Diagnostics display (prints current status and gauge pixel readings in the console).
-- `F9`: Calibration Wizard.
+- `F9`: (Removed) Replaced by independent calibration hotkeys.
 
-## Calibration Wizard (F9)
+## Calibration Hotkeys
 
-If the Auto-Likes feature does not click on players or the like button correctly, or fails to detect the 10/10 gauge, run the Calibration Wizard. The script will save your settings into `settings.json`.
+If the Auto-Likes feature does not click correctly or fails to detect the 10/10 gauge, use these hotkeys to calibrate. Hover your mouse over the specific element in the game and press the hotkey. You can do this in any order. The script will instantly save your settings into `settings.json`.
 
-1. Launch the game and start the script.
-2. Press `F9` to begin calibration mode. Look at the script's console window for instructions.
-3. Hover your mouse over the 1st player on the list and press `F9`.
-4. Hover your mouse over the like button for the 1st player and press `F9`.
-5. Repeat steps 3 and 4 for the 2nd and 3rd players.
-6. Wait until the game's excitement gauge hits 10/10 (fully blue), then press `F9` one last time.
+- `Shift + 1` : Set coordinates for Player 1
+- `Shift + Q` : Set coordinates for Like Button of Player 1
+- `Shift + 2` : Set coordinates for Player 2
+- `Shift + W` : Set coordinates for Like Button of Player 2
+- `Shift + 3` : Set coordinates for Player 3
+- `Shift + E` : Set coordinates for Like Button of Player 3
+- `Shift + 4` : Calibrate Gauge (Press this when the excitement gauge is exactly 10/10)
 
 The script will save these exact screen coordinates and pixel counts. Calibration only needs to be done once per display resolution.
 
@@ -53,3 +60,7 @@ Settings are saved automatically in `settings.json` after running the calibratio
 ## License
 
 This project is intended for personal use and automation testing.
+
+## License
+
+This project is closed-source (Proprietary). Detailed terms of use can be found in the [LICENSE](./LICENSE) file.

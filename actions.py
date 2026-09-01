@@ -55,37 +55,41 @@ def distribute_likes():
         log_info("actions", "Points gauge full! Starting to distribute likes...")
         orig_x, orig_y = get_mouse_pos()
         
-        for i in range(3):
-            # If coordinates are (0,0), it means not calibrated
-            if config.PLAYER_POSITIONS[i] == (0, 0) or config.LIKE_POSITIONS[i] == (0, 0):
-                log_info("actions", f"Player {i+1} not calibrated, skipping.")
-                continue
+        try:
+            user32.BlockInput(True)
+            for i in range(3):
+                # If coordinates are (0,0), it means not calibrated
+                if config.PLAYER_POSITIONS[i] == (0, 0) or config.LIKE_POSITIONS[i] == (0, 0):
+                    log_info("actions", f"Player {i+1} not calibrated, skipping.")
+                    continue
+                    
+                px, py = config.PLAYER_POSITIONS[i]
+                like_btn_x, like_btn_y = config.LIKE_POSITIONS[i]
                 
-            px, py = config.PLAYER_POSITIONS[i]
-            like_btn_x, like_btn_y = config.LIKE_POSITIONS[i]
-            
-            click(px, py)
-            time.sleep(0.3)
-            
-            with mss.MSS() as sct:
-                btn_bbox = {"left": like_btn_x - 5, "top": like_btn_y - 5, "width": 10, "height": 10}
-                btn_img = np.array(sct.grab(btn_bbox))
-                
-            b = np.mean(btn_img[:, :, 0])
-            g = np.mean(btn_img[:, :, 1])
-            r = np.mean(btn_img[:, :, 2])
-            
-            is_blue = (b > r + 30) and (g > r + 20)
-            
-            if is_blue:
-                log_info("actions", f"Distributing points to player nr {i+1}")
-                click(like_btn_x, like_btn_y)
+                click(px, py)
                 time.sleep(0.3)
-                break
-            else:
-                log_info("actions", f"Player nr {i+1} cannot receive likes, looking further.")
                 
-        user32.SetCursorPos(orig_x, orig_y)
+                with mss.MSS() as sct:
+                    btn_bbox = {"left": like_btn_x - 5, "top": like_btn_y - 5, "width": 10, "height": 10}
+                    btn_img = np.array(sct.grab(btn_bbox))
+                    
+                b = np.mean(btn_img[:, :, 0])
+                g = np.mean(btn_img[:, :, 1])
+                r = np.mean(btn_img[:, :, 2])
+                
+                is_blue = (b > r + 30) and (g > r + 20)
+                
+                if is_blue:
+                    log_info("actions", f"Distributing points to player nr {i+1}")
+                    click(like_btn_x, like_btn_y)
+                    time.sleep(0.3)
+                    break
+                else:
+                    log_info("actions", f"Player nr {i+1} cannot receive likes, looking further.")
+        finally:
+            user32.SetCursorPos(orig_x, orig_y)
+            user32.BlockInput(False)
+            
         log_info("actions", "Finished distributing likes.")
     except Exception as e:
         log_error("actions.py: distribute_likes", e)
