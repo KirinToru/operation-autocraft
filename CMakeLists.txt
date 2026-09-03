@@ -6,10 +6,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Add JSON library
-add_subdirectory(third_party/json EXCLUDE_FROM_ALL)
+add_subdirectory(lib/json EXCLUDE_FROM_ALL)
 
 # Add ImGui files manually since it doesn't have a modern CMakeLists.txt out of the box
-set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui)
+set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/imgui)
 file(GLOB IMGUI_SOURCES
     ${IMGUI_DIR}/*.cpp
     ${IMGUI_DIR}/backends/imgui_impl_win32.cpp
@@ -23,13 +23,13 @@ target_include_directories(imgui PUBLIC
 )
 
 # Application executable
-file(GLOB APP_SOURCES src/*.cpp)
+file(GLOB APP_SOURCES src/*.cpp src/*.rc)
 
 add_executable(${PROJECT_NAME} WIN32 ${APP_SOURCES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "Operation Autocraft")
 
 # Include directories
-target_include_directories(${PROJECT_NAME} PRIVATE src)
+target_include_directories(${PROJECT_NAME} PRIVATE src include)
 
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -43,6 +43,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 # Compiler flags for MSVC
 if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4 /MP)
+    target_compile_options(${PROJECT_NAME} PRIVATE /W4 /MP /utf-8)
     target_link_options(${PROJECT_NAME} PRIVATE /SUBSYSTEM:WINDOWS /MANIFESTUAC:"level='requireAdministrator' uiAccess='false'")
 endif()

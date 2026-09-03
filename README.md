@@ -1,3 +1,14 @@
+<div align="center">
+  <img src="assets/icon/icon3000x3000.png" width="150" alt="Operation Autocraft Logo">
+  <br><br>
+  
+  <img src="https://img.shields.io/badge/C++-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white" alt="C++">
+  <img src="https://img.shields.io/badge/Dear_ImGui-0F0F0F?style=for-the-badge" alt="ImGui">
+  <img src="https://img.shields.io/badge/DirectX_11-107C10?style=for-the-badge&logo=windows&logoColor=white" alt="DirectX 11">
+  <img src="https://img.shields.io/badge/CMake-064F8C?style=for-the-badge&logo=cmake&logoColor=white" alt="CMake">
+  
+</div>
+
 # Operation Autocraft
 
 Operation Autocraft is a sophisticated automation overlay for Fallen Doll: Operation Lovecraft, designed to automatically interact with game features like distributing likes, handling hearts, and managing stamina bars.

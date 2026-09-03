@@ -159,43 +159,67 @@ const char* GetMaleBarState()
 
     int pink_count = 0;
     int grey_count = 0;
+    int total_end = 0;
+    int pink_at_end = 0;
 
+    // 1. Check for Pink at the end point (if calibrated)
+    if (MALE_BAR_END_POS.x != 0 || MALE_BAR_END_POS.y != 0) {
+        int e_start_x = max(0, MALE_BAR_END_POS.x - 10);
+        int e_end_x = MALE_BAR_END_POS.x + 10;
+        int e_y = MALE_BAR_END_POS.y;
+        for (int x = e_start_x; x <= e_end_x; ++x) {
+            PixelColor c = GetPixel(x, e_y);
+            total_end++;
+            if (c.r >= 145 && c.b >= 75 && ((int)c.r - (int)c.g) >= 35 && ((int)c.b - (int)c.g) >= 5) {
+                pink_at_end++;
+            }
+        }
+    }
+
+    // 2. Check general 300-pixel area around start point
     int start_x = max(0, MALE_BAR_POS.x - 150);
     int end_x = MALE_BAR_POS.x + 150;
     int y = MALE_BAR_POS.y;
 
     for (int x = start_x; x <= end_x; ++x) {
         PixelColor c = GetPixel(x, y);
-        
         // Pink check
         if (c.r >= 145 && c.b >= 75 && ((int)c.r - (int)c.g) >= 35 && ((int)c.b - (int)c.g) >= 5) {
             pink_count++;
         }
-        // Grey check
-        else if (c.r >= 55 && c.r <= 180 && 
-            std::abs((int)c.r - (int)c.g) <= 18 && 
-            std::abs((int)c.g - (int)c.b) <= 18 && 
-            std::abs((int)c.r - (int)c.b) <= 18) {
+        // Grey check (lenient)
+        else if (c.r >= 15 && c.r <= 200 && 
+            std::abs((int)c.r - (int)c.g) <= 25 && 
+            std::abs((int)c.g - (int)c.b) <= 25 && 
+            std::abs((int)c.r - (int)c.b) <= 25) {
             grey_count++;
         }
     }
 
-    if (pink_count > 0 && grey_count == 0) return "FULL_PINK";
-    if (grey_count > 0 && pink_count == 0) return "FULL_GREY";
-    if (pink_count > 0 && grey_count > 0) return "PARTIAL_PINK";
+    if (total_end > 0) {
+        if (pink_at_end >= 3) return "FULL_PINK";
+    } else {
+        // Fallback if END POS is not calibrated (using old logic)
+        if (pink_count > 0 && grey_count == 0) return "FULL_PINK"; 
+    }
+
+    if (pink_count > 0) return "PARTIAL_PINK";
     
+    // If no pink at all, but there is some grey/dark background
+    if (grey_count > 0) return "FULL_GREY";
+
     return "UNKNOWN";
 }
 
 bool IsFemaleArrowYellow()
 {
-    if (FEMALE_BAR_POS.x == 0 && FEMALE_BAR_POS.y == 0) return false;
+    if (FEMALE_ARROW_POS.x == 0 && FEMALE_ARROW_POS.y == 0) return false;
 
     // Check a 20x20 area around the calibrated point for yellow
-    int start_x = max(0, FEMALE_BAR_POS.x - 10);
-    int end_x = FEMALE_BAR_POS.x + 10;
-    int start_y = max(0, FEMALE_BAR_POS.y - 10);
-    int end_y = FEMALE_BAR_POS.y + 10;
+    int start_x = max(0, FEMALE_ARROW_POS.x - 10);
+    int end_x = FEMALE_ARROW_POS.x + 10;
+    int start_y = max(0, FEMALE_ARROW_POS.y - 10);
+    int end_y = FEMALE_ARROW_POS.y + 10;
 
     for (int y = start_y; y <= end_y; ++y) {
         for (int x = start_x; x <= end_x; ++x) {
@@ -233,7 +257,7 @@ bool IsMaleArrowYellow()
 
 bool IsHeartButtonPresent()
 {
-    if (HEART_L_POS.x == 0 && HEART_L_POS.y == 0) return false;
+    if (HEART_L_POS.x == 0 && HEART_L_POS.y == 0) return area_has_heart_prompt(); // fallback to static
 
     // Check a 30x30 area for the bright white hexagon border
     int start_x = max(0, HEART_L_POS.x - 15);
@@ -268,6 +292,29 @@ bool IsGaugeSliceBlue(const Point2D& pos)
             // Light blue: high blue and green, relatively lower red
             if (c.b > 150 && c.g > 150 && c.r < c.b - 20) {
                 return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool IsPinkApproaching(const Point2D& pos)
+{
+    if (pos.x == 0 && pos.y == 0) return false;
+
+    // Check an area [x-30, x-10] and [y-30, y+30]
+    int start_x = max(0, pos.x - 30);
+    int end_x = max(0, pos.x - 10);
+    int start_y = max(0, pos.y - 30);
+    int end_y = pos.y + 30;
+
+    int pink_hits = 0;
+    for (int y = start_y; y <= end_y; ++y) {
+        for (int x = start_x; x <= end_x; ++x) {
+            PixelColor c = GetPixel(x, y);
+            if (c.r >= 145 && c.b >= 75 && ((int)c.r - (int)c.g) >= 35 && ((int)c.b - (int)c.g) >= 5) {
+                pink_hits++;
+                if (pink_hits > 5) return true;
             }
         }
     }

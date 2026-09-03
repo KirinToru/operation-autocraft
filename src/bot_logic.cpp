@@ -18,22 +18,38 @@ int g_GaugePixels = 0;
 
 // Config State variables are now in config.cpp/config.h
 
-void SendKey(WORD vk)
+struct EnumData {
+    HWND hwnd;
+};
+
+BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
+    EnumData* data = (EnumData*)lParam;
+    char title[256];
+    if (GetWindowTextA(hwnd, title, sizeof(title))) {
+        std::string s(title);
+        if (s.find("Fallen") != std::string::npos || 
+            s.find("Doll") != std::string::npos || 
+            s.find("Lovecraft") != std::string::npos || 
+            s.find("Paralogue") != std::string::npos) {
+            data->hwnd = hwnd;
+            return FALSE; // Stop enumerating
+        }
+    }
+    char cls[256];
+    if (GetClassNameA(hwnd, cls, sizeof(cls))) {
+        std::string s(cls);
+        if (s == "UnrealWindow") {
+            data->hwnd = hwnd;
+        }
+    }
+    return TRUE;
+}
+
+HWND GetGameWindow()
 {
-    INPUT input = {0};
-    input.type = INPUT_KEYBOARD;
-    
-    // Convert Virtual Key to Hardware Scan Code for layout-independence
-    UINT scanCode = MapVirtualKeyA(vk, MAPVK_VK_TO_VSC);
-    input.ki.wScan = static_cast<WORD>(scanCode);
-    input.ki.dwFlags = KEYEVENTF_SCANCODE;
-    
-    SendInput(1, &input, sizeof(INPUT));
-    
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    
-    input.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;
-    SendInput(1, &input, sizeof(INPUT));
+    EnumData data = { NULL };
+    EnumWindows(EnumWindowsProc, (LPARAM)&data);
+    return data.hwnd;
 }
 
 bool IsGameActive()
@@ -42,10 +58,36 @@ bool IsGameActive()
     if (!fg) return false;
     char title[256];
     GetWindowTextA(fg, title, sizeof(title));
-    std::string sTitle(title);
-    return (sTitle.find("FallenDoll") != std::string::npos || 
-            sTitle.find("Paralogue") != std::string::npos ||
-            fg == g_hwnd);
+    std::string s(title);
+    
+    if (s.find("Fallen") != std::string::npos || 
+        s.find("Doll") != std::string::npos || 
+        s.find("Lovecraft") != std::string::npos || 
+        s.find("Paralogue") != std::string::npos) {
+        return true;
+    }
+    char cls[256];
+    if (GetClassNameA(fg, cls, sizeof(cls))) {
+        std::string sCls(cls);
+        if (sCls == "UnrealWindow") {
+            return true;
+        }
+    }
+    return (fg == g_hwnd);
+}
+
+void SendKey(WORD vk)
+{
+    HWND hwnd = GetGameWindow();
+    if (!hwnd) return;
+    
+    UINT scanCode = MapVirtualKeyA(vk, MAPVK_VK_TO_VSC);
+    LPARAM lParamDown = 1 | (scanCode << 16);
+    LPARAM lParamUp = 1 | (scanCode << 16) | (1 << 30) | (1 << 31);
+    
+    PostMessage(hwnd, WM_KEYDOWN, vk, lParamDown);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    PostMessage(hwnd, WM_KEYUP, vk, lParamUp);
 }
 
 void BotLogicLoop()
@@ -62,7 +104,8 @@ void BotLogicLoop()
 
     while (g_bRunning)
     {
-        if (!bot_enabled || !IsGameActive() || g_CalibrationMode)
+        HWND gameHwnd = GetGameWindow();
+        if (!bot_enabled || !gameHwnd || g_CalibrationMode)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
             continue;
@@ -78,53 +121,59 @@ void BotLogicLoop()
             g_MaleBarColor = GetMaleBarState();
 
             // Calculate click interval
-            int click_interval_ms = (int)(1000.0f / (CLICK_SPEED_HZ > 0.1f ? CLICK_SPEED_HZ : 0.1f));
+            int click_interval_ms = CLICK_SPEED_MS;
 
-            // Priority: L condition Check
-            bool l_condition_met = false;
-            if (auto_l)
-            {
-                l_condition_met = (IsMaleArrowYellow() && IsFemaleArrowYellow()) || IsHeartButtonPresent();
-            }
+            // AHK Signal #1 (L Priority)
+            bool heartVisible = IsHeartButtonPresent();
+            bool yellowMarks = IsMaleArrowYellow() && IsFemaleArrowYellow();
+            bool should_press_l = (heartVisible || yellowMarks) && auto_l;
 
-            // AUTO L
-            if (auto_l)
+            if (should_press_l)
             {
-                if (l_condition_met)
-                {
-                    if (!is_spamming_l) {
-                        AddLog(LANGUAGE == "RU" ? "Начато нажатие L" : "Started spamming L");
-                        is_spamming_l = true;
-                    }
-                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_heart_press).count();
-                    if (elapsed >= click_interval_ms)
-                    {
-                        SendKey(BIND_SPAM_L.vkCode);
-                        last_heart_press = now;
-                    }
+
+                is_spamming_j = false; // L overrides J
+                if (!is_spamming_l) {
+                    AddLog(LANGUAGE == "RU" ? "Начато нажатие L" : "Started spamming L");
+                    is_spamming_l = true;
                 }
-                else
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_heart_press).count();
+                if (elapsed >= click_interval_ms)
                 {
-                    if (is_spamming_l) {
-                        AddLog(LANGUAGE == "RU" ? "Закончено нажатие L" : "Stopped spamming L");
-                        is_spamming_l = false;
-                    }
+                    SendKey((WORD)BIND_SPAM_L.vkCode);
+                    last_heart_press = now;
                 }
             }
-            else if (is_spamming_l) {
-                AddLog(LANGUAGE == "RU" ? "Закончено нажатие L (отключено)" : "Stopped spamming L (disabled)");
-                is_spamming_l = false;
+            else
+            {
+                if (is_spamming_l) {
+                    AddLog(LANGUAGE == "RU" ? "Закончено нажатие L" : "Stopped spamming L");
+                    is_spamming_l = false;
+                }
             }
             
-            // AUTO J (ONLY if L condition is NOT met!)
-            if (auto_j && !l_condition_met)
+            // AHK Signal #2 (J)
+            if (auto_j && !should_press_l)
             {
                 bool should_press_j = false;
+                int j_interval = click_interval_ms;
+                
                 std::string male_state = g_MaleBarColor;
                 
-                if (male_state == "FULL_PINK" || male_state == "FULL_GREY")
-                {
+                if (male_state == "FULL_PINK") {
                     should_press_j = true;
+                    j_interval = click_interval_ms; // FullBarJInterval
+                }
+                else if (male_state == "FULL_GREY" || male_state == "UNKNOWN") {
+                    should_press_j = true;
+                    j_interval = click_interval_ms; // EmptyBarJInterval
+                }
+                else if (male_state == "PARTIAL_PINK") {
+                    // Do nothing, wait for it to reach the end
+                    should_press_j = false;
+                }
+                else if (area_has_start_prompt()) {
+                    should_press_j = true;
+                    j_interval = 90; // StartPressInterval
                 }
                 
                 if (should_press_j)
@@ -134,9 +183,9 @@ void BotLogicLoop()
                         is_spamming_j = true;
                     }
                     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_j_press).count();
-                    if (elapsed >= click_interval_ms)
+                    if (elapsed >= j_interval)
                     {
-                        SendKey(BIND_SPAM_J.vkCode);
+                        SendKey((WORD)BIND_SPAM_J.vkCode);
                         last_j_press = now;
                     }
                 }
@@ -176,22 +225,19 @@ void BotLogicLoop()
                     static auto last_likes_run = std::chrono::steady_clock::now();
                     auto elapsed_likes = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_likes_run).count();
                     
-                    if (elapsed_likes > 10000) // check every 10 seconds
+                    if (elapsed_likes > 500) // check every 500ms (2Hz)
                     {
-                        g_LikesStatus = "CHECKING GAUGE";
+                        g_LikesStatus = "CHECKING IDEA";
                         
                         bool should_distribute = false;
-                        int likes_to_give = 0;
 
                         if (mode_immediate) {
                             if (IsGaugeSliceBlue(GAUGE_POS_FIRST)) {
                                 should_distribute = true;
-                                likes_to_give = 10; // We'll loop but re-check inside
                             }
                         } else {
                             if (IsGaugeSliceBlue(GAUGE_POS_LAST)) {
                                 should_distribute = true;
-                                likes_to_give = 10;
                             }
                         }
 
@@ -200,23 +246,13 @@ void BotLogicLoop()
                             g_LikesStatus = "DISTRIBUTING LIKES";
                             AddLog(LANGUAGE == "RU" ? "[Авто Лайки] Раздача лайков!" : "[Auto Likes] Distributing likes!");
                             
-                            BlockInput(TRUE);
-                            POINT orig_pos;
-                            GetCursorPos(&orig_pos);
+                            // UE4 ignores background mouse clicks, so we must move the physical cursor
 
-                            int current_player = 0;
+                            static int current_player = 0;
+                            int likes_to_give = mode_immediate ? 1 : num_players;
                             
-                            for (int like_i = 0; like_i < likes_to_give; ++like_i)
+                            for (int i = 0; i < likes_to_give; ++i)
                             {
-                                // In immediate mode, we re-verify if the gauge is still blue before each like!
-                                if (mode_immediate && like_i > 0)
-                                {
-                                    CaptureFrame(); // Get latest frame
-                                    if (!IsGaugeSliceBlue(GAUGE_POS_FIRST)) {
-                                        break; // Gauge is empty, stop distributing!
-                                    }
-                                }
-                                
                                 // Find next valid player
                                 int attempts = 0;
                                 while (PLAYER_POSITIONS[current_player].x == 0 && PLAYER_POSITIONS[current_player].y == 0 && attempts < 4) {
@@ -224,15 +260,29 @@ void BotLogicLoop()
                                     attempts++;
                                 }
                                 
-                                if (attempts >= 4) break; // No valid players
+                                if (attempts >= 4) {
+                                    AddLog("[Debug] No valid players found!");
+                                    break; 
+                                }
 
                                 int px = PLAYER_POSITIONS[current_player].x;
                                 int py = PLAYER_POSITIONS[current_player].y;
                                 int lx = LIKE_POSITIONS[current_player].x;
                                 int ly = LIKE_POSITIONS[current_player].y;
                                 
-                                // Open player menu
-                                SetCursorPos(px, py);
+                                AddLog(LANGUAGE == "RU" ? ("[Дебаг] Лайк игроку " + std::to_string(current_player + 1)) : ("[Debug] Liking player " + std::to_string(current_player + 1)));
+                                
+                                auto MoveMouseAbsolute = [](int x, int y) {
+                                    INPUT input = {0};
+                                    input.type = INPUT_MOUSE;
+                                    input.mi.dx = (x * 65535) / GetSystemMetrics(SM_CXSCREEN);
+                                    input.mi.dy = (y * 65535) / GetSystemMetrics(SM_CYSCREEN);
+                                    input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE;
+                                    SendInput(1, &input, sizeof(INPUT));
+                                };
+
+                                // Open player menu (Physical click)
+                                MoveMouseAbsolute(px, py);
                                 INPUT input = {0};
                                 input.type = INPUT_MOUSE;
                                 input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
@@ -241,23 +291,21 @@ void BotLogicLoop()
                                 input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
                                 SendInput(1, &input, sizeof(INPUT));
 
-                                std::this_thread::sleep_for(std::chrono::milliseconds(600));
+                                std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Increased for reliability
 
-                                // Click like button
-                                SetCursorPos(lx, ly);
+                                // Click like button (Physical click)
+                                MoveMouseAbsolute(lx, ly);
                                 input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
                                 SendInput(1, &input, sizeof(INPUT));
                                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
                                 input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
                                 SendInput(1, &input, sizeof(INPUT));
                                 
-                                std::this_thread::sleep_for(std::chrono::milliseconds(300));
+                                std::this_thread::sleep_for(std::chrono::milliseconds(400)); // Wait before next action
                                 
                                 current_player = (current_player + 1) % num_players;
                             }
                             
-                            SetCursorPos(orig_pos.x, orig_pos.y);
-                            BlockInput(FALSE);
                         }
                         
                         last_likes_run = std::chrono::steady_clock::now();

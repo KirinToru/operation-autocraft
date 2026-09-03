@@ -12,6 +12,7 @@
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
 #include "input_hook.h"
+#include "resource.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dwmapi.lib")
@@ -78,7 +79,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     // Create transparent, borderless, layered, topmost window
     HWND hwnd = ::CreateWindowEx(
-        WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_TOOLWINDOW,
+        WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
         wc.lpszClassName, _T("Operation Autocraft Overlay"),
         WS_POPUP,
         0, 0, screenWidth, screenHeight,
@@ -93,7 +94,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     nid.uID = 1;
     nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     nid.uCallbackMessage = WM_TRAYICON;
-    nid.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
+    nid.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
     _tcscpy_s(nid.szTip, _T("Operation Autocraft"));
     Shell_NotifyIcon(NIM_ADD, &nid);
 
@@ -120,11 +121,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     
-    // Load Cyrillic font
-    ImFont* font = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\arial.ttf", 16.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
+    // Load Cyrillic font - Use Segoe UI Bold for modern look
+    ImFont* font = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeuib.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
     if (font == NULL) {
-        // Fallback if Arial is somehow missing
-        io.Fonts->AddFontDefault();
+        font = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\arialbd.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesCyrillic());
+        if (font == NULL) {
+            io.Fonts->AddFontDefault();
+        }
     }
 
     // Setup Dear ImGui style (black/orange theme applied in gui.cpp)
