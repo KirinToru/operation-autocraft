@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(AutocraftOverlay CXX)
+project(OperationAutocraft CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,14 +10,14 @@ add_subdirectory(third_party/json EXCLUDE_FROM_ALL)
 
 # Add ImGui files manually since it doesn't have a modern CMakeLists.txt out of the box
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/imgui)
-file(GLOB IMGUI_SOURCES 
+file(GLOB IMGUI_SOURCES
     ${IMGUI_DIR}/*.cpp
     ${IMGUI_DIR}/backends/imgui_impl_win32.cpp
     ${IMGUI_DIR}/backends/imgui_impl_dx11.cpp
 )
 
 add_library(imgui STATIC ${IMGUI_SOURCES})
-target_include_directories(imgui PUBLIC 
+target_include_directories(imgui PUBLIC
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
 )
@@ -26,17 +26,18 @@ target_include_directories(imgui PUBLIC
 file(GLOB APP_SOURCES src/*.cpp)
 
 add_executable(${PROJECT_NAME} WIN32 ${APP_SOURCES})
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "Operation Autocraft")
 
 # Include directories
 target_include_directories(${PROJECT_NAME} PRIVATE src)
 
 # Link libraries
-target_link_libraries(${PROJECT_NAME} PRIVATE 
-    imgui 
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    imgui
     nlohmann_json::nlohmann_json
-    d3d11 
-    d3dcompiler 
-    dxgi 
+    d3d11
+    d3dcompiler
+    dxgi
     dwmapi
 )
 
