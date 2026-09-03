@@ -5,11 +5,27 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Add JSON library
-add_subdirectory(lib/json EXCLUDE_FROM_ALL)
+include(FetchContent)
+
+# Download JSON library automatically
+FetchContent_Declare(json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+)
+FetchContent_MakeAvailable(json)
+
+# Download ImGui automatically
+FetchContent_Declare(imgui_src
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.90.4
+)
+FetchContent_GetProperties(imgui_src)
+if(NOT imgui_src_POPULATED)
+    FetchContent_Populate(imgui_src)
+endif()
 
 # Add ImGui files manually since it doesn't have a modern CMakeLists.txt out of the box
-set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/imgui)
+set(IMGUI_DIR ${imgui_src_SOURCE_DIR})
 file(GLOB IMGUI_SOURCES
     ${IMGUI_DIR}/*.cpp
     ${IMGUI_DIR}/backends/imgui_impl_win32.cpp
