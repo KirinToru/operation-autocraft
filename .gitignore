@@ -1,15 +1,19 @@
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
+# C++ / Visual Studio / CMake ignores
 build/
-dist/
-*.spec
+.vs/
+out/
+bin/
+obj/
+*.exe
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.suo
+*.user
+
+# Configuration files generated dynamically
 settings.json
-*.log
-.venv/
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+
+# Antigravity context
+gemini_context.txt
