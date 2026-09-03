@@ -29,7 +29,7 @@ This tool has been completely rewritten in **C++** using **DirectX 11** and **De
 ## Installation & Running
 
 1. Download the latest compiled `Operation Autocraft.exe` from the releases page (or build it from source using CMake and Visual Studio).
-2. Right-click the `.exe` file and select **Run as Administrator** (required for capturing input hooks system-wide).
+2. Run the `.exe` file.
 3. The transparent overlay will appear on your screen. 
 4. Press **Insert** to toggle the menu visibility.
 
