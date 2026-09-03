@@ -17,3 +17,6 @@ settings.json
 
 # Antigravity context
 gemini_context.txt
+
+# Release notes
+RELEASE.md

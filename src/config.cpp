@@ -13,7 +13,7 @@ bool auto_l = false;
 bool auto_likes = false;
 
 int VISION_POLL_RATE_MS = 50;
-float CLICK_SPEED_HZ = 2.0f;
+int CLICK_SPEED_MS = 1;
 
 int GAUGE_THRESHOLD = 200;
 std::string LANGUAGE = "EN"; // Can be EN, PL
@@ -24,8 +24,9 @@ Point2D LIKE_POSITIONS[4] = { {0,0}, {0,0}, {0,0}, {0,0} };
 Point2D GAUGE_POS_FIRST = {0,0};
 Point2D GAUGE_POS_LAST = {0,0};
 Point2D MALE_BAR_POS = {0,0};
+Point2D MALE_BAR_END_POS = {0,0};
 Point2D MALE_ARROW_POS = {0,0};
-Point2D FEMALE_BAR_POS = {0,0};
+Point2D FEMALE_ARROW_POS = {0,0};
 Point2D HEART_L_POS = {0,0};
 
 KeyBind BIND_MENU_TOGGLE = { VK_INSERT, false, false, false };
@@ -34,6 +35,9 @@ KeyBind BIND_SPAM_J = { 'J', false, false, false };
 KeyBind BIND_SPAM_L = { 'L', false, false, false };
 KeyBind BIND_PIN_WINDOW = { VK_MBUTTON, false, false, false };
 KeyBind BIND_PIN_ALL = { VK_MBUTTON, true, false, false };
+KeyBind BIND_START_STOP = { 'P', false, false, false };
+KeyBind BIND_TOGGLE_LIKES = { 'K', false, false, false };
+KeyBind BIND_TOGGLE_MODE = { VK_OEM_2, false, false, false };
 
 KeyBind BIND_CALIB_P1 = { '1', false, false, false };
 KeyBind BIND_CALIB_P2 = { '2', false, false, false };
@@ -41,18 +45,20 @@ KeyBind BIND_CALIB_P3 = { '3', false, false, false };
 KeyBind BIND_CALIB_L1 = { '1', true, false, false };
 KeyBind BIND_CALIB_L2 = { '2', true, false, false };
 KeyBind BIND_CALIB_L3 = { '3', true, false, false };
-KeyBind BIND_CALIB_GAUGE_START = { '5', false, false, false };
-KeyBind BIND_CALIB_GAUGE_END = { '6', false, false, false };
-KeyBind BIND_CALIB_MALE_BAR = { '7', false, false, false };
-KeyBind BIND_CALIB_FEMALE_ARROW = { '8', false, false, false };
-KeyBind BIND_CALIB_HEART = { '9', false, false, false };
-KeyBind BIND_CALIB_MALE_ARROW = { '0', false, false, false };
+KeyBind BIND_CALIB_GAUGE_START = { '4', false, false, false };
+KeyBind BIND_CALIB_GAUGE_END = { '4', true, false, false };
+KeyBind BIND_CALIB_MALE_BAR = { '5', false, false, false };
+KeyBind BIND_CALIB_MEND = { '5', true, false, false };
+KeyBind BIND_CALIB_MALE_ARROW = { '6', false, false, false };
+KeyBind BIND_CALIB_FEMALE_ARROW = { '7', false, false, false };
+KeyBind BIND_CALIB_HEART = { '8', false, false, false };
 
 // Diagnostics State
 bool g_bSpammingJ = false;
 bool g_bSpammingL = false;
 std::string g_MaleBarColor = "UNKNOWN";
 std::string g_LikesStatus = "IDLE";
+
 
 void LoadKeyBind(const nlohmann::json& j, const std::string& key, KeyBind& bind) {
     if (j.contains(key)) {
@@ -83,7 +89,14 @@ void LoadConfig()
             if (j.contains("auto_l")) auto_l = j["auto_l"];
             if (j.contains("auto_likes")) auto_likes = j["auto_likes"];
             if (j.contains("VISION_POLL_RATE_MS")) VISION_POLL_RATE_MS = j["VISION_POLL_RATE_MS"];
-            if (j.contains("CLICK_SPEED_HZ")) CLICK_SPEED_HZ = j["CLICK_SPEED_HZ"];
+            if (j.contains("CLICK_SPEED_MS")) { CLICK_SPEED_MS = j["CLICK_SPEED_MS"]; }
+            
+            // Bounds checking
+            if (VISION_POLL_RATE_MS < 1) VISION_POLL_RATE_MS = 1;
+            if (VISION_POLL_RATE_MS > 3000) VISION_POLL_RATE_MS = 3000;
+            if (CLICK_SPEED_MS < 1) CLICK_SPEED_MS = 1;
+            if (CLICK_SPEED_MS > 3000) CLICK_SPEED_MS = 3000;
+
             if (j.contains("GAUGE_THRESHOLD")) GAUGE_THRESHOLD = j["GAUGE_THRESHOLD"];
             
             if (j.contains("players")) {
@@ -101,14 +114,18 @@ void LoadConfig()
             if (j.contains("gauge_first")) { GAUGE_POS_FIRST.x = j["gauge_first"]["x"]; GAUGE_POS_FIRST.y = j["gauge_first"]["y"]; }
             if (j.contains("gauge_last")) { GAUGE_POS_LAST.x = j["gauge_last"]["x"]; GAUGE_POS_LAST.y = j["gauge_last"]["y"]; }
             if (j.contains("male_bar")) { MALE_BAR_POS.x = j["male_bar"]["x"]; MALE_BAR_POS.y = j["male_bar"]["y"]; }
+            if (j.contains("male_bar_end")) { MALE_BAR_END_POS.x = j["male_bar_end"]["x"]; MALE_BAR_END_POS.y = j["male_bar_end"]["y"]; }
             if (j.contains("male_arrow")) { MALE_ARROW_POS.x = j["male_arrow"]["x"]; MALE_ARROW_POS.y = j["male_arrow"]["y"]; }
-            if (j.contains("female_bar")) { FEMALE_BAR_POS.x = j["female_bar"]["x"]; FEMALE_BAR_POS.y = j["female_bar"]["y"]; }
+            if (j.contains("female_arrow")) { FEMALE_ARROW_POS.x = j["female_arrow"]["x"]; FEMALE_ARROW_POS.y = j["female_arrow"]["y"]; }
             if (j.contains("heart_l")) { HEART_L_POS.x = j["heart_l"]["x"]; HEART_L_POS.y = j["heart_l"]["y"]; }
             
             LoadKeyBind(j, "bind_menu_toggle", BIND_MENU_TOGGLE);
             LoadKeyBind(j, "bind_app_visibility", BIND_APP_VISIBILITY);
+            LoadKeyBind(j, "bind_start_stop", BIND_START_STOP);
             LoadKeyBind(j, "bind_spam_j", BIND_SPAM_J);
             LoadKeyBind(j, "bind_spam_l", BIND_SPAM_L);
+            LoadKeyBind(j, "bind_toggle_likes", BIND_TOGGLE_LIKES);
+            LoadKeyBind(j, "bind_toggle_mode", BIND_TOGGLE_MODE);
             LoadKeyBind(j, "bind_pin_window", BIND_PIN_WINDOW);
             LoadKeyBind(j, "bind_pin_all", BIND_PIN_ALL);
             LoadKeyBind(j, "bind_calib_p1", BIND_CALIB_P1);
@@ -120,6 +137,7 @@ void LoadConfig()
             LoadKeyBind(j, "bind_calib_gauge_start", BIND_CALIB_GAUGE_START);
             LoadKeyBind(j, "bind_calib_gauge_end", BIND_CALIB_GAUGE_END);
             LoadKeyBind(j, "bind_calib_male_bar", BIND_CALIB_MALE_BAR);
+            LoadKeyBind(j, "bind_calib_mend", BIND_CALIB_MEND);
             LoadKeyBind(j, "bind_calib_female_arrow", BIND_CALIB_FEMALE_ARROW);
             LoadKeyBind(j, "bind_calib_heart", BIND_CALIB_HEART);
             LoadKeyBind(j, "bind_calib_male_arrow", BIND_CALIB_MALE_ARROW);
@@ -139,7 +157,7 @@ void SaveConfig()
         j["num_players"] = num_players;
         j["mode_immediate"] = mode_immediate;
         j["VISION_POLL_RATE_MS"] = VISION_POLL_RATE_MS;
-        j["CLICK_SPEED_HZ"] = CLICK_SPEED_HZ;
+        j["CLICK_SPEED_MS"] = CLICK_SPEED_MS;
         j["GAUGE_THRESHOLD"] = GAUGE_THRESHOLD;
         j["LANGUAGE"] = LANGUAGE;
 
@@ -158,8 +176,9 @@ void SaveConfig()
         j["gauge_first"] = {{"x", GAUGE_POS_FIRST.x}, {"y", GAUGE_POS_FIRST.y}};
         j["gauge_last"] = {{"x", GAUGE_POS_LAST.x}, {"y", GAUGE_POS_LAST.y}};
         j["male_bar"] = {{"x", MALE_BAR_POS.x}, {"y", MALE_BAR_POS.y}};
+        j["male_bar_end"] = {{"x", MALE_BAR_END_POS.x}, {"y", MALE_BAR_END_POS.y}};
         j["male_arrow"] = {{"x", MALE_ARROW_POS.x}, {"y", MALE_ARROW_POS.y}};
-        j["female_bar"] = {{"x", FEMALE_BAR_POS.x}, {"y", FEMALE_BAR_POS.y}};
+        j["female_arrow"] = {{"x", FEMALE_ARROW_POS.x}, {"y", FEMALE_ARROW_POS.y}};
         j["heart_l"] = {{"x", HEART_L_POS.x}, {"y", HEART_L_POS.y}};
         
         SaveKeyBind(j, "bind_menu_toggle", BIND_MENU_TOGGLE);
@@ -168,6 +187,9 @@ void SaveConfig()
         SaveKeyBind(j, "bind_spam_l", BIND_SPAM_L);
         SaveKeyBind(j, "bind_pin_window", BIND_PIN_WINDOW);
         SaveKeyBind(j, "bind_pin_all", BIND_PIN_ALL);
+        SaveKeyBind(j, "bind_start_stop", BIND_START_STOP);
+        SaveKeyBind(j, "bind_toggle_likes", BIND_TOGGLE_LIKES);
+        SaveKeyBind(j, "bind_toggle_mode", BIND_TOGGLE_MODE);
         SaveKeyBind(j, "bind_calib_p1", BIND_CALIB_P1);
         SaveKeyBind(j, "bind_calib_p2", BIND_CALIB_P2);
         SaveKeyBind(j, "bind_calib_p3", BIND_CALIB_P3);
@@ -177,6 +199,7 @@ void SaveConfig()
         SaveKeyBind(j, "bind_calib_gauge_start", BIND_CALIB_GAUGE_START);
         SaveKeyBind(j, "bind_calib_gauge_end", BIND_CALIB_GAUGE_END);
         SaveKeyBind(j, "bind_calib_male_bar", BIND_CALIB_MALE_BAR);
+        SaveKeyBind(j, "bind_calib_mend", BIND_CALIB_MEND);
         SaveKeyBind(j, "bind_calib_female_arrow", BIND_CALIB_FEMALE_ARROW);
         SaveKeyBind(j, "bind_calib_heart", BIND_CALIB_HEART);
         SaveKeyBind(j, "bind_calib_male_arrow", BIND_CALIB_MALE_ARROW);
@@ -256,4 +279,32 @@ std::string KeyBindToString(const KeyBind& bind)
     else res += VKCodeToString(bind.vkCode);
 
     return res;
+}
+
+
+void SetDefaultBinds()
+{
+    BIND_MENU_TOGGLE = { VK_INSERT, false, false, false };
+    BIND_APP_VISIBILITY = { VK_INSERT, true, false, false }; 
+    BIND_SPAM_J = { 'J', false, false, false };
+    BIND_SPAM_L = { 'L', false, false, false };
+    BIND_PIN_WINDOW = { VK_MBUTTON, false, false, false };
+    BIND_PIN_ALL = { VK_MBUTTON, true, false, false };
+    BIND_START_STOP = { 'P', false, false, false };
+    BIND_TOGGLE_LIKES = { 'K', false, false, false };
+    BIND_TOGGLE_MODE = { VK_OEM_2, false, false, false };
+
+    BIND_CALIB_P1 = { '1', false, false, false };
+    BIND_CALIB_P2 = { '2', false, false, false };
+    BIND_CALIB_P3 = { '3', false, false, false };
+    BIND_CALIB_L1 = { '1', true, false, false };
+    BIND_CALIB_L2 = { '2', true, false, false };
+    BIND_CALIB_L3 = { '3', true, false, false };
+    BIND_CALIB_GAUGE_START = { '4', false, false, false };
+    BIND_CALIB_GAUGE_END = { '4', true, false, false };
+    BIND_CALIB_MALE_BAR = { '5', false, false, false };
+    BIND_CALIB_MEND = { '5', true, false, false };
+    BIND_CALIB_MALE_ARROW = { '6', false, false, false };
+    BIND_CALIB_FEMALE_ARROW = { '7', false, false, false };
+    BIND_CALIB_HEART = { '8', false, false, false };
 }

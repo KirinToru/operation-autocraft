@@ -23,6 +23,9 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
     if (nCode >= 0)
     {
+        extern bool IsGameActive();
+        bool gameActive = IsGameActive();
+
         KBDLLHOOKSTRUCT* pKey = (KBDLLHOOKSTRUCT*)lParam;
         bool isKeyDown = (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN);
         
@@ -48,26 +51,44 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
                 }
             }
 
-            if (CheckBind(BIND_APP_VISIBILITY, pKey->vkCode))
+            if (gameActive)
             {
-                g_AppVisible = !g_AppVisible;
-                return 1;
-            }
-
-            if (CheckBind(BIND_MENU_TOGGLE, pKey->vkCode))
-            {
-                g_ShowMainMenu = !g_ShowMainMenu;
-                if (!g_ShowMainMenu) {
-                    g_ShowControlPanel = false;
-                    g_ShowDiagnostics = false;
-                    g_ShowSettings = false;
-                    g_ShowKeybindings = false;
+                if (CheckBind(BIND_APP_VISIBILITY, pKey->vkCode))
+                {
+                    g_AppVisible = !g_AppVisible;
+                    return 1;
                 }
-                return 1;
+
+                if (CheckBind(BIND_MENU_TOGGLE, pKey->vkCode))
+                {
+                    g_ShowMainMenu = !g_ShowMainMenu;
+                    return 1;
+                }
+                
+                if (CheckBind(BIND_TOGGLE_LIKES, pKey->vkCode))
+                {
+                    auto_likes = !auto_likes;
+                    AddLog(LANGUAGE == "RU" ? (auto_likes ? "Авто-лайки ВКЛ" : "Авто-лайки ВЫКЛ") : (auto_likes ? "Auto Likes ON" : "Auto Likes OFF"));
+                    return 1;
+                }
+
+                if (CheckBind(BIND_TOGGLE_MODE, pKey->vkCode))
+                {
+                    mode_immediate = !mode_immediate;
+                    AddLog(LANGUAGE == "RU" ? (mode_immediate ? "Режим клика: ОДИНАКОВЫЙ" : "Режим клика: НАКОПЛЕННЫЙ") : (mode_immediate ? "Click Mode: IMMEDIATE" : "Click Mode: ACCUMULATED"));
+                    return 1;
+                }
+                
+                if (CheckBind(BIND_START_STOP, pKey->vkCode))
+                {
+                    bot_enabled = !bot_enabled;
+                    AddLog(bot_enabled ? "Bot started" : "Bot paused");
+                    return 1;
+                }
             }
             
             // Calibration Mode Handling
-            if (g_CalibrationMode)
+            if (g_CalibrationMode && gameActive)
             {
                 if (pKey->vkCode == VK_ESCAPE)
                 {
@@ -112,21 +133,22 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
                 
                 if (CheckBind(BIND_CALIB_GAUGE_START, pKey->vkCode) || CheckBind(BIND_CALIB_GAUGE_END, pKey->vkCode) || 
                     CheckBind(BIND_CALIB_MALE_BAR, pKey->vkCode) || CheckBind(BIND_CALIB_FEMALE_ARROW, pKey->vkCode) || 
-                    CheckBind(BIND_CALIB_HEART, pKey->vkCode) || CheckBind(BIND_CALIB_MALE_ARROW, pKey->vkCode))
+                    CheckBind(BIND_CALIB_HEART, pKey->vkCode) || CheckBind(BIND_CALIB_MALE_ARROW, pKey->vkCode) ||
+                    CheckBind(BIND_CALIB_MEND, pKey->vkCode))
                 {
                     POINT pt;
                     GetCursorPos(&pt);
                     if (CheckBind(BIND_CALIB_GAUGE_START, pKey->vkCode)) {
                         GAUGE_POS_FIRST.x = pt.x; GAUGE_POS_FIRST.y = pt.y;
-                        AddLog(LANGUAGE == "RU" ? "Начало шкалы лайков (1/10) сохранено." : "Gauge Start (1/10) saved.");
+                        AddLog(LANGUAGE == "RU" ? "Шкала ИДЕИ start сохранена." : "IDEA Gauge start saved.");
                     } else if (CheckBind(BIND_CALIB_GAUGE_END, pKey->vkCode)) {
                         GAUGE_POS_LAST.x = pt.x; GAUGE_POS_LAST.y = pt.y;
-                        AddLog(LANGUAGE == "RU" ? "Конец шкалы лайков (10/10) сохранен." : "Gauge End (10/10) saved.");
+                        AddLog(LANGUAGE == "RU" ? "Шкала ИДЕИ end сохранена." : "IDEA Gauge end saved.");
                     } else if (CheckBind(BIND_CALIB_MALE_BAR, pKey->vkCode)) {
                         MALE_BAR_POS.x = pt.x; MALE_BAR_POS.y = pt.y;
                         AddLog(LANGUAGE == "RU" ? "Мужская шкала выносливости сохранена." : "Male Bar saved.");
                     } else if (CheckBind(BIND_CALIB_FEMALE_ARROW, pKey->vkCode)) {
-                        FEMALE_BAR_POS.x = pt.x; FEMALE_BAR_POS.y = pt.y;
+                        FEMALE_ARROW_POS.x = pt.x; FEMALE_ARROW_POS.y = pt.y;
                         AddLog(LANGUAGE == "RU" ? "Женская стрелка выносливости сохранена." : "Female Arrow saved.");
                     } else if (CheckBind(BIND_CALIB_HEART, pKey->vkCode)) {
                         HEART_L_POS.x = pt.x; HEART_L_POS.y = pt.y;
@@ -134,13 +156,13 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
                     } else if (CheckBind(BIND_CALIB_MALE_ARROW, pKey->vkCode)) {
                         MALE_ARROW_POS.x = pt.x; MALE_ARROW_POS.y = pt.y;
                         AddLog(LANGUAGE == "RU" ? "Мужские стрелки выносливости сохранены." : "Male Arrow saved.");
+                    } else if (CheckBind(BIND_CALIB_MEND, pKey->vkCode)) {
+                        MALE_BAR_END_POS.x = pt.x; MALE_BAR_END_POS.y = pt.y;
+                        AddLog(LANGUAGE == "RU" ? "Мужская шкала (конец) сохранена." : "Male Bar (End) saved.");
                     }
                     SaveConfig();
                     return 1;
                 }
-                
-                // Block other keyboard inputs? Let's just allow normal keys in case they want to type, but swallow 1234
-                // Actually user said block game input, but we'll let it pass so they can play if they want
             }
         }
     }

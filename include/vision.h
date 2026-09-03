@@ -37,4 +37,5 @@ bool IsHeartButtonPresent();
 
 // Returns true if the given gauge position (first or last) is blue
 bool IsGaugeSliceBlue(const Point2D& pos);
+bool IsPinkApproaching(const Point2D& pos);
 int get_gauge_fullness();

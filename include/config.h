@@ -16,7 +16,7 @@ extern int num_players;
 extern bool mode_immediate;
 
 extern int VISION_POLL_RATE_MS;
-extern float CLICK_SPEED_HZ;
+extern int CLICK_SPEED_MS;
 
 extern int GAUGE_THRESHOLD;
 extern std::string LANGUAGE;
@@ -27,8 +27,9 @@ extern Point2D LIKE_POSITIONS[4];
 extern Point2D GAUGE_POS_FIRST;
 extern Point2D GAUGE_POS_LAST;
 extern Point2D MALE_BAR_POS;
+extern Point2D MALE_BAR_END_POS;
 extern Point2D MALE_ARROW_POS;
-extern Point2D FEMALE_BAR_POS;
+extern Point2D FEMALE_ARROW_POS;
 extern Point2D HEART_L_POS;
 
 struct KeyBind {
@@ -49,6 +50,9 @@ extern KeyBind BIND_SPAM_J;
 extern KeyBind BIND_SPAM_L;
 extern KeyBind BIND_PIN_WINDOW;
 extern KeyBind BIND_PIN_ALL;
+extern KeyBind BIND_START_STOP;
+extern KeyBind BIND_TOGGLE_LIKES;
+extern KeyBind BIND_TOGGLE_MODE;
 
 // Calibration Binds
 extern KeyBind BIND_CALIB_P1;
@@ -63,6 +67,7 @@ extern KeyBind BIND_CALIB_MALE_BAR;
 extern KeyBind BIND_CALIB_FEMALE_ARROW;
 extern KeyBind BIND_CALIB_HEART;
 extern KeyBind BIND_CALIB_MALE_ARROW;
+extern KeyBind BIND_CALIB_MEND;
 
 std::string VKCodeToString(int vk);
 std::string KeyBindToString(const KeyBind& bind);
@@ -78,3 +83,4 @@ void AddLog(const std::string& message);
 // Initialization / Save
 void LoadConfig();
 void SaveConfig();
+void SetDefaultBinds();
