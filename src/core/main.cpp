@@ -11,7 +11,7 @@
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
-#include "input_hook.h"
+#include "core/input_hook.h"
 #include "resource.h"
 
 #pragma comment(lib, "d3d11.lib")

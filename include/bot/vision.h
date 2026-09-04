@@ -1,6 +1,6 @@
 #pragma once
 #include <windows.h>
-#include "config.h"
+#include "core/config.h"
 
 struct PixelColor {
     unsigned char r, g, b, a;

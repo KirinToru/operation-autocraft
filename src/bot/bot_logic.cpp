@@ -2,10 +2,10 @@
 #include <atomic>
 #include <windows.h>
 #include <chrono>
-#include "input_hook.h"
-#include "config.h"
-#include "vision.h"
-#include "gui.h"
+#include "core/input_hook.h"
+#include "core/config.h"
+#include "bot/vision.h"
+#include "ui/gui.h"
 
 std::thread g_BotThread;
 extern std::atomic<bool> g_bRunning;
@@ -18,23 +18,24 @@ int g_GaugePixels = 0;
 
 // Config State variables are now in config.cpp/config.h
 
+#include <string_view>
+
 struct EnumData {
     HWND hwnd;
 };
 
 BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
-    EnumData* data = (EnumData*)lParam;
+    EnumData* data = reinterpret_cast<EnumData*>(lParam);
     char cls[256];
     if (GetClassNameA(hwnd, cls, sizeof(cls))) {
-        std::string sCls(cls);
-        if (sCls == "UnrealWindow") {
+        if (std::string_view(cls) == "UnrealWindow") {
             char title[256];
             if (GetWindowTextA(hwnd, title, sizeof(title))) {
-                std::string s(title);
-                if (s.find("Fallen") != std::string::npos || 
-                    s.find("Doll") != std::string::npos || 
-                    s.find("Lovecraft") != std::string::npos || 
-                    s.find("Paralogue") != std::string::npos) {
+                std::string_view s(title);
+                if (s.find("Fallen") != std::string_view::npos || 
+                    s.find("Doll") != std::string_view::npos || 
+                    s.find("Lovecraft") != std::string_view::npos || 
+                    s.find("Paralogue") != std::string_view::npos) {
                     data->hwnd = hwnd;
                     return FALSE; // Exact match found
                 }
@@ -60,18 +61,17 @@ bool IsGameActive()
     if (!fg) return false;
     char title[256];
     GetWindowTextA(fg, title, sizeof(title));
-    std::string s(title);
+    std::string_view s(title);
     
-    if (s.find("Fallen") != std::string::npos || 
-        s.find("Doll") != std::string::npos || 
-        s.find("Lovecraft") != std::string::npos || 
-        s.find("Paralogue") != std::string::npos) {
+    if (s.find("Fallen") != std::string_view::npos || 
+        s.find("Doll") != std::string_view::npos || 
+        s.find("Lovecraft") != std::string_view::npos || 
+        s.find("Paralogue") != std::string_view::npos) {
         return true;
     }
     char cls[256];
     if (GetClassNameA(fg, cls, sizeof(cls))) {
-        std::string sCls(cls);
-        if (sCls == "UnrealWindow") {
+        if (std::string_view(cls) == "UnrealWindow") {
             return true;
         }
     }
@@ -156,26 +156,12 @@ void BotLogicLoop()
             // AHK Signal #2 (J)
             if (auto_j && !should_press_l)
             {
-                bool should_press_j = false;
                 int j_interval = click_interval_ms;
-                
-                std::string male_state = g_MaleBarColor;
-                
-                if (male_state == "FULL_PINK") {
+                bool should_press_j = (g_MaleBarColor == "FULL_PINK" || g_MaleBarColor == "FULL_GREY" || g_MaleBarColor == "UNKNOWN");
+
+                if (!should_press_j && g_MaleBarColor != "PARTIAL_PINK" && area_has_start_prompt()) {
                     should_press_j = true;
-                    j_interval = click_interval_ms; // FullBarJInterval
-                }
-                else if (male_state == "FULL_GREY" || male_state == "UNKNOWN") {
-                    should_press_j = true;
-                    j_interval = click_interval_ms; // EmptyBarJInterval
-                }
-                else if (male_state == "PARTIAL_PINK") {
-                    // Do nothing, wait for it to reach the end
-                    should_press_j = false;
-                }
-                else if (area_has_start_prompt()) {
-                    should_press_j = true;
-                    j_interval = 90; // StartPressInterval
+                    j_interval = 90;
                 }
                 
                 if (should_press_j)
@@ -228,23 +214,23 @@ void BotLogicLoop()
                     static LikeState like_state = L_IDLE;
                     static auto like_state_time = std::chrono::steady_clock::now();
                     static int current_player = 0;
-                    static HWND previous_fg = NULL;
+                    
+                    // State machine for non-blocking clicks
+                    enum DistribStep { D_SELECT, D_WAIT_LIKE, D_WAIT_ANIM };
+                    static DistribStep distrib_step = D_SELECT;
+                    static auto action_time = std::chrono::steady_clock::now();
                     
                     if (like_state == L_IDLE)
                     {
                         g_LikesStatus = "IDLE";
-                        bool should_start = false;
-                        if (mode_immediate) {
-                            // Jesli którykolwiek jest niebieski, to znaczy ze mamy min. 1/10
-                            if (IsGaugeSliceBlue(GAUGE_POS_FIRST) || IsGaugeSliceBlue(GAUGE_POS_LAST)) should_start = true;
-                        } else {
-                            // Wymagamy zeby poczatek i koniec byl niebieski, co gwarantuje 10/10 niezaleznie co jest po lewej a co po prawej
-                            if (IsGaugeSliceBlue(GAUGE_POS_FIRST) && IsGaugeSliceBlue(GAUGE_POS_LAST)) should_start = true;
-                        }
+                        bool should_start = mode_immediate 
+                            ? (IsGaugeSliceBlue(GAUGE_POS_FIRST) || IsGaugeSliceBlue(GAUGE_POS_LAST))
+                            : (IsGaugeSliceBlue(GAUGE_POS_FIRST) && IsGaugeSliceBlue(GAUGE_POS_LAST));
                         
                         if (should_start) {
                             like_state = L_DISTRIBUTING;
                             like_state_time = now;
+                            distrib_step = D_SELECT;
                             if (GetForegroundWindow() != gameHwnd) {
                                 SetForegroundWindow(gameHwnd);
                                 std::this_thread::sleep_for(std::chrono::milliseconds(100)); // wait for window to surface
@@ -256,59 +242,59 @@ void BotLogicLoop()
                     {
                         g_LikesStatus = "DISTRIBUTING LIKES";
                         
-                        // Sprawdzanie czy OBA pola zniknely (koniec rozdawania = 0/10) - calkowicie odporne na to, czy pasek znika od prawej czy od lewej
-                        if (!IsGaugeSliceBlue(GAUGE_POS_FIRST) && !IsGaugeSliceBlue(GAUGE_POS_LAST)) {
-                            like_state = L_COOLDOWN; // Przechodzimy w Cooldown zamiast od razu do IDLE (zeby animacje w grze mialy czas zgasnac)
+                        // Check if BOTH are empty (end of distribution = 0/10) - immune to direction of gauge drain
+                        if (distrib_step == D_SELECT && !IsGaugeSliceBlue(GAUGE_POS_FIRST) && !IsGaugeSliceBlue(GAUGE_POS_LAST)) {
+                            like_state = L_COOLDOWN; // Go to Cooldown instead of IDLE to let animations finish
                             like_state_time = now;
                             AddLog(LANGUAGE == "RU" ? "[Авто Лайки] Шкала пуста, останавливаем." : "[Auto Likes] Gauge empty, stopping.");
                         }
-                        // Limit czasu 25 sekund zeby zdazyl rozdac wszystkie 10+ lajkow
+                        // 25 second time limit to distribute all 10+ likes
                         else if (std::chrono::duration_cast<std::chrono::seconds>(now - like_state_time).count() >= 25) {
                             like_state = L_COOLDOWN;
                             like_state_time = now;
-                            AddLog(LANGUAGE == "RU" ? "[Авто Лайки] Лимит времени (10с). Перерыв." : "[Auto Likes] Time limit (10s). Break.");
+                            AddLog(LANGUAGE == "RU" ? "[Авто Лайки] Лимит времени (25с). Перерыв." : "[Auto Likes] Time limit (25s). Break.");
                         }
                         else
                         {
-                            // Rozdajemy dla JEDNEGO gracza, a potem puszczamy glowna petle zeby zaktualizowac obraz
-                            int attempts = 0;
-                            while (PLAYER_POSITIONS[current_player].x == 0 && PLAYER_POSITIONS[current_player].y == 0 && attempts < 4) {
-                                current_player = (current_player + 1) % num_players;
-                                attempts++;
-                            }
-                            
-                            if (attempts < 4) {
-                                int px = PLAYER_POSITIONS[current_player].x;
-                                int py = PLAYER_POSITIONS[current_player].y;
-                                int lx = LIKE_POSITIONS[current_player].x;
-                                int ly = LIKE_POSITIONS[current_player].y;
-                                
-                                auto ClickMouseBackground = [gameHwnd](int x, int y) {
-                                    POINT pt = { x, y };
-                                    ClientToScreen(gameHwnd, &pt);
-                                    
-                                    // Move and click
-                                    SetCursorPos(pt.x, pt.y);
-                                    
-                                    INPUT input = { 0 };
-                                    input.type = INPUT_MOUSE;
-                                    input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-                                    SendInput(1, &input, sizeof(INPUT));
-                                    
-                                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                                    
-                                    input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
-                                    SendInput(1, &input, sizeof(INPUT));
-                                };
+                            auto ClickMouseBackground = [gameHwnd](int x, int y) {
+                                POINT pt = { x, y };
+                                ClientToScreen(gameHwnd, &pt);
+                                SetCursorPos(pt.x, pt.y);
+                                INPUT input = { 0 };
+                                input.type = INPUT_MOUSE;
+                                input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+                                SendInput(1, &input, sizeof(INPUT));
+                                std::this_thread::sleep_for(std::chrono::milliseconds(30)); // very short, just enough for game to register
+                                input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+                                SendInput(1, &input, sizeof(INPUT));
+                            };
 
-                                ClickMouseBackground(px, py);
-                                std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                                ClickMouseBackground(lx, ly);
+                            if (distrib_step == D_SELECT) {
+                                int attempts = 0;
+                                while (PLAYER_POSITIONS[current_player].x == 0 && PLAYER_POSITIONS[current_player].y == 0 && attempts < 4) {
+                                    current_player = (current_player + 1) % num_players;
+                                    attempts++;
+                                }
                                 
-                                // Znacznie wolniej, tak jak wczesniej: czekamy az animacja w grze sie zarejestruje
-                                std::this_thread::sleep_for(std::chrono::milliseconds(600)); 
-                                
-                                current_player = (current_player + 1) % num_players;
+                                if (attempts < 4) {
+                                    ClickMouseBackground(PLAYER_POSITIONS[current_player].x, PLAYER_POSITIONS[current_player].y);
+                                    distrib_step = D_WAIT_LIKE;
+                                    action_time = now;
+                                }
+                            }
+                            else if (distrib_step == D_WAIT_LIKE) {
+                                if (std::chrono::duration_cast<std::chrono::milliseconds>(now - action_time).count() >= 500) {
+                                    ClickMouseBackground(LIKE_POSITIONS[current_player].x, LIKE_POSITIONS[current_player].y);
+                                    distrib_step = D_WAIT_ANIM;
+                                    action_time = now;
+                                }
+                            }
+                            else if (distrib_step == D_WAIT_ANIM) {
+                                // Wait slower, just like before: waiting for game animation to register
+                                if (std::chrono::duration_cast<std::chrono::milliseconds>(now - action_time).count() >= 600) {
+                                    current_player = (current_player + 1) % num_players;
+                                    distrib_step = D_SELECT;
+                                }
                             }
                         }
                     }

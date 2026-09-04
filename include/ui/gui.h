@@ -1,5 +1,5 @@
 #pragma once
-#include "config.h"
+#include "core/config.h"
 
 extern bool g_ShowMainMenu;
 extern bool g_ShowDiagnostics;

@@ -1,9 +1,9 @@
-#include "input_hook.h"
+#include "core/input_hook.h"
 #include <windows.h>
 #include <iostream>
 #include <string>
-#include "gui.h"
-#include "config.h"
+#include "ui/gui.h"
+#include "core/config.h"
 
 extern KeyBind* g_CurrentBinding;
 

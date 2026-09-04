@@ -1,5 +1,5 @@
-#include "vision.h"
-#include "config.h"
+#include "bot/vision.h"
+#include "core/config.h"
 #include <d3d11.h>
 #include <dxgi1_2.h>
 #include <iostream>

@@ -5,8 +5,9 @@
   <img src="https://img.shields.io/badge/C++-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white" alt="C++">
   <img src="https://img.shields.io/badge/Dear_ImGui-0F0F0F?style=for-the-badge" alt="ImGui">
   <img src="https://img.shields.io/badge/DirectX_11-107C10?style=for-the-badge&logo=windows&logoColor=white" alt="DirectX 11">
+  <img src="https://img.shields.io/badge/Desktop_Duplication_API-0078D7?style=for-the-badge&logo=windows&logoColor=white" alt="Desktop Duplication API">
+  <img src="https://img.shields.io/badge/nlohmann_json-F3E5AB?style=for-the-badge&logo=json&logoColor=black" alt="nlohmann/json">
   <img src="https://img.shields.io/badge/CMake-064F8C?style=for-the-badge&logo=cmake&logoColor=white" alt="CMake">
-  
 </div>
 
 # Operation Autocraft

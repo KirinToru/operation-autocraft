@@ -36,7 +36,7 @@ target_include_directories(imgui PUBLIC
 )
 
 # Application executable
-file(GLOB APP_SOURCES src/*.cpp src/*.rc)
+file(GLOB_RECURSE APP_SOURCES src/*.cpp src/*.rc)
 
 add_executable(${PROJECT_NAME} WIN32 ${APP_SOURCES})
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "Operation Autocraft")
