@@ -24,22 +24,24 @@ struct EnumData {
 
 BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam) {
     EnumData* data = (EnumData*)lParam;
-    char title[256];
-    if (GetWindowTextA(hwnd, title, sizeof(title))) {
-        std::string s(title);
-        if (s.find("Fallen") != std::string::npos || 
-            s.find("Doll") != std::string::npos || 
-            s.find("Lovecraft") != std::string::npos || 
-            s.find("Paralogue") != std::string::npos) {
-            data->hwnd = hwnd;
-            return FALSE; // Stop enumerating
-        }
-    }
     char cls[256];
     if (GetClassNameA(hwnd, cls, sizeof(cls))) {
-        std::string s(cls);
-        if (s == "UnrealWindow") {
-            data->hwnd = hwnd;
+        std::string sCls(cls);
+        if (sCls == "UnrealWindow") {
+            char title[256];
+            if (GetWindowTextA(hwnd, title, sizeof(title))) {
+                std::string s(title);
+                if (s.find("Fallen") != std::string::npos || 
+                    s.find("Doll") != std::string::npos || 
+                    s.find("Lovecraft") != std::string::npos || 
+                    s.find("Paralogue") != std::string::npos) {
+                    data->hwnd = hwnd;
+                    return FALSE; // Exact match found
+                }
+            }
+            if (data->hwnd == NULL) {
+                data->hwnd = hwnd;
+            }
         }
     }
     return TRUE;
@@ -222,94 +224,101 @@ void BotLogicLoop()
                 }
                 else
                 {
-                    static auto last_likes_run = std::chrono::steady_clock::now();
-                    auto elapsed_likes = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_likes_run).count();
+                    enum LikeState { L_IDLE, L_DISTRIBUTING, L_COOLDOWN };
+                    static LikeState like_state = L_IDLE;
+                    static auto like_state_time = std::chrono::steady_clock::now();
+                    static int current_player = 0;
+                    static HWND previous_fg = NULL;
                     
-                    if (elapsed_likes > 500) // check every 500ms (2Hz)
+                    if (like_state == L_IDLE)
                     {
-                        g_LikesStatus = "CHECKING IDEA";
-                        
-                        bool should_distribute = false;
-
+                        g_LikesStatus = "IDLE";
+                        bool should_start = false;
                         if (mode_immediate) {
-                            if (IsGaugeSliceBlue(GAUGE_POS_FIRST)) {
-                                should_distribute = true;
-                            }
+                            // Jesli którykolwiek jest niebieski, to znaczy ze mamy min. 1/10
+                            if (IsGaugeSliceBlue(GAUGE_POS_FIRST) || IsGaugeSliceBlue(GAUGE_POS_LAST)) should_start = true;
                         } else {
-                            if (IsGaugeSliceBlue(GAUGE_POS_LAST)) {
-                                should_distribute = true;
-                            }
+                            // Wymagamy zeby poczatek i koniec byl niebieski, co gwarantuje 10/10 niezaleznie co jest po lewej a co po prawej
+                            if (IsGaugeSliceBlue(GAUGE_POS_FIRST) && IsGaugeSliceBlue(GAUGE_POS_LAST)) should_start = true;
                         }
-
-                        if (should_distribute)
+                        
+                        if (should_start) {
+                            like_state = L_DISTRIBUTING;
+                            like_state_time = now;
+                            if (GetForegroundWindow() != gameHwnd) {
+                                SetForegroundWindow(gameHwnd);
+                                std::this_thread::sleep_for(std::chrono::milliseconds(100)); // wait for window to surface
+                            }
+                            AddLog(LANGUAGE == "RU" ? "[Авто Лайки] Начинаем раздачу!" : "[Auto Likes] Starting distribution!");
+                        }
+                    }
+                    else if (like_state == L_DISTRIBUTING)
+                    {
+                        g_LikesStatus = "DISTRIBUTING LIKES";
+                        
+                        // Sprawdzanie czy OBA pola zniknely (koniec rozdawania = 0/10) - calkowicie odporne na to, czy pasek znika od prawej czy od lewej
+                        if (!IsGaugeSliceBlue(GAUGE_POS_FIRST) && !IsGaugeSliceBlue(GAUGE_POS_LAST)) {
+                            like_state = L_COOLDOWN; // Przechodzimy w Cooldown zamiast od razu do IDLE (zeby animacje w grze mialy czas zgasnac)
+                            like_state_time = now;
+                            AddLog(LANGUAGE == "RU" ? "[Авто Лайки] Шкала пуста, останавливаем." : "[Auto Likes] Gauge empty, stopping.");
+                        }
+                        // Limit czasu 25 sekund zeby zdazyl rozdac wszystkie 10+ lajkow
+                        else if (std::chrono::duration_cast<std::chrono::seconds>(now - like_state_time).count() >= 25) {
+                            like_state = L_COOLDOWN;
+                            like_state_time = now;
+                            AddLog(LANGUAGE == "RU" ? "[Авто Лайки] Лимит времени (10с). Перерыв." : "[Auto Likes] Time limit (10s). Break.");
+                        }
+                        else
                         {
-                            g_LikesStatus = "DISTRIBUTING LIKES";
-                            AddLog(LANGUAGE == "RU" ? "[Авто Лайки] Раздача лайков!" : "[Auto Likes] Distributing likes!");
+                            // Rozdajemy dla JEDNEGO gracza, a potem puszczamy glowna petle zeby zaktualizowac obraz
+                            int attempts = 0;
+                            while (PLAYER_POSITIONS[current_player].x == 0 && PLAYER_POSITIONS[current_player].y == 0 && attempts < 4) {
+                                current_player = (current_player + 1) % num_players;
+                                attempts++;
+                            }
                             
-                            // UE4 ignores background mouse clicks, so we must move the physical cursor
-
-                            static int current_player = 0;
-                            int likes_to_give = mode_immediate ? 1 : num_players;
-                            
-                            for (int i = 0; i < likes_to_give; ++i)
-                            {
-                                // Find next valid player
-                                int attempts = 0;
-                                while (PLAYER_POSITIONS[current_player].x == 0 && PLAYER_POSITIONS[current_player].y == 0 && attempts < 4) {
-                                    current_player = (current_player + 1) % num_players;
-                                    attempts++;
-                                }
-                                
-                                if (attempts >= 4) {
-                                    AddLog("[Debug] No valid players found!");
-                                    break; 
-                                }
-
+                            if (attempts < 4) {
                                 int px = PLAYER_POSITIONS[current_player].x;
                                 int py = PLAYER_POSITIONS[current_player].y;
                                 int lx = LIKE_POSITIONS[current_player].x;
                                 int ly = LIKE_POSITIONS[current_player].y;
                                 
-                                AddLog(LANGUAGE == "RU" ? ("[Дебаг] Лайк игроку " + std::to_string(current_player + 1)) : ("[Debug] Liking player " + std::to_string(current_player + 1)));
-                                
-                                auto MoveMouseAbsolute = [](int x, int y) {
-                                    INPUT input = {0};
+                                auto ClickMouseBackground = [gameHwnd](int x, int y) {
+                                    POINT pt = { x, y };
+                                    ClientToScreen(gameHwnd, &pt);
+                                    
+                                    // Move and click
+                                    SetCursorPos(pt.x, pt.y);
+                                    
+                                    INPUT input = { 0 };
                                     input.type = INPUT_MOUSE;
-                                    input.mi.dx = (x * 65535) / GetSystemMetrics(SM_CXSCREEN);
-                                    input.mi.dy = (y * 65535) / GetSystemMetrics(SM_CYSCREEN);
-                                    input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE;
+                                    input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+                                    SendInput(1, &input, sizeof(INPUT));
+                                    
+                                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                                    
+                                    input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
                                     SendInput(1, &input, sizeof(INPUT));
                                 };
 
-                                // Open player menu (Physical click)
-                                MoveMouseAbsolute(px, py);
-                                INPUT input = {0};
-                                input.type = INPUT_MOUSE;
-                                input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-                                SendInput(1, &input, sizeof(INPUT));
-                                std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                                input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
-                                SendInput(1, &input, sizeof(INPUT));
-
-                                std::this_thread::sleep_for(std::chrono::milliseconds(500)); // Increased for reliability
-
-                                // Click like button (Physical click)
-                                MoveMouseAbsolute(lx, ly);
-                                input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-                                SendInput(1, &input, sizeof(INPUT));
-                                std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                                input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
-                                SendInput(1, &input, sizeof(INPUT));
+                                ClickMouseBackground(px, py);
+                                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                                ClickMouseBackground(lx, ly);
                                 
-                                std::this_thread::sleep_for(std::chrono::milliseconds(400)); // Wait before next action
+                                // Znacznie wolniej, tak jak wczesniej: czekamy az animacja w grze sie zarejestruje
+                                std::this_thread::sleep_for(std::chrono::milliseconds(600)); 
                                 
                                 current_player = (current_player + 1) % num_players;
                             }
-                            
                         }
-                        
-                        last_likes_run = std::chrono::steady_clock::now();
-                        g_LikesStatus = "WAITING";
+                    }
+                    else if (like_state == L_COOLDOWN)
+                    {
+                        g_LikesStatus = "WAITING (COOLDOWN)";
+                        if (std::chrono::duration_cast<std::chrono::seconds>(now - like_state_time).count() >= 10) {
+                            like_state = L_IDLE;
+                            AddLog(LANGUAGE == "RU" ? "[Авто Лайки] Перерыв закончен." : "[Auto Likes] Break finished.");
+                        }
                     }
                 }
             }

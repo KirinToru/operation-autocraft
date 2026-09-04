@@ -19,10 +19,7 @@ FetchContent_Declare(imgui_src
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
     GIT_TAG v1.90.4
 )
-FetchContent_GetProperties(imgui_src)
-if(NOT imgui_src_POPULATED)
-    FetchContent_Populate(imgui_src)
-endif()
+FetchContent_MakeAvailable(imgui_src)
 
 # Add ImGui files manually since it doesn't have a modern CMakeLists.txt out of the box
 set(IMGUI_DIR ${imgui_src_SOURCE_DIR})

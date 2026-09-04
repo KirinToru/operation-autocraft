@@ -347,6 +347,8 @@ void DrawGameStyleWindowBorder(ImU32 color = IM_COL32(106, 113, 113, 255))
     ImVec2 p_min = ImGui::GetWindowPos();
     ImVec2 p_max = ImVec2(p_min.x + ImGui::GetWindowSize().x, p_min.y + ImGui::GetWindowSize().y);
     
+    draw_list->PushClipRect(p_min, p_max, false);
+
     // Draw dotted background pattern below title bar
     float startY = p_min.y + 40.0f;
     float h = p_max.y - startY;
@@ -366,7 +368,9 @@ void DrawGameStyleWindowBorder(ImU32 color = IM_COL32(106, 113, 113, 255))
     }
     
     // Draw 1.0 pixel border
-    draw_list->AddRect(p_min, p_max, color, 0.0f, 0, 1.0f);
+    draw_list->AddRect(p_min, ImVec2(p_max.x - 1.0f, p_max.y - 1.0f), color, 0.0f, 0, 1.0f);
+    
+    draw_list->PopClipRect();
 }
 
 bool DrawCalibrationTitleBar(const char* title)
@@ -421,6 +425,8 @@ bool DrawCustomTitleBar(const char* title, bool& isPinned)
     ImVec2 p_max = ImVec2(p_min.x + ImGui::GetWindowSize().x, p_min.y + 40.0f);
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     
+    draw_list->PushClipRect(p_min, p_max, false);
+    
     // Draw white background
     draw_list->AddRectFilled(p_min, p_max, IM_COL32(240, 240, 240, 255));
     
@@ -466,6 +472,8 @@ bool DrawCustomTitleBar(const char* title, bool& isPinned)
     draw_list->AddLine(ImVec2(cCenter.x - 8.0f, cCenter.y - 8.0f), ImVec2(cCenter.x + 8.0f, cCenter.y + 8.0f), textCol, 1.5f);
     draw_list->AddLine(ImVec2(cCenter.x + 8.0f, cCenter.y - 8.0f), ImVec2(cCenter.x - 8.0f, cCenter.y + 8.0f), textCol, 1.5f);
     
+    draw_list->PopClipRect();
+
     // Dummy item to reserve vertical space and break AutoResize feedback loop (using fixed width)
     ImGui::SetCursorScreenPos(p_min);
     ImGui::Dummy(ImVec2(260.0f, 40.0f)); 
@@ -485,6 +493,8 @@ bool DrawSubWindowTitleBar(const char* title, bool& isPinned)
     ImVec2 p_max = ImVec2(win_pos.x + win_width, win_pos.y + 40.0f);
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     
+    draw_list->PushClipRect(p_min, p_max, false);
+
     // Draw solid dark background for title bar with 80% transparency
     draw_list->AddRectFilled(p_min, p_max, IM_COL32(18, 25, 30, 204));
     
@@ -522,6 +532,8 @@ bool DrawSubWindowTitleBar(const char* title, bool& isPinned)
     draw_list->AddLine(ImVec2(cCenter.x - 8.0f, cCenter.y - 8.0f), ImVec2(cCenter.x + 8.0f, cCenter.y + 8.0f), xCol, 1.5f);
     draw_list->AddLine(ImVec2(cCenter.x + 8.0f, cCenter.y - 8.0f), ImVec2(cCenter.x - 8.0f, cCenter.y + 8.0f), xCol, 1.5f);
     
+    draw_list->PopClipRect();
+
     // Resume layout properly below the title bar, respecting window padding
     ImGui::SetCursorPosY(40.0f - ImGui::GetStyle().WindowPadding.y); 
     
@@ -979,12 +991,19 @@ void UpdateClickThroughState()
     wasTextInput = wantTextInput;
 }
 
+bool IsGameActive(); // Defined in bot_logic.cpp
+HWND GetGameWindow(); // Defined in bot_logic.cpp
+
 void ForceTopMost()
 {
-    SetWindowPos(g_hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    static HWND s_lastGameHwnd = NULL;
+    HWND game_hwnd = GetGameWindow();
+    if (game_hwnd && game_hwnd != s_lastGameHwnd)
+    {
+        SetWindowLongPtr(g_hwnd, GWLP_HWNDPARENT, (LONG_PTR)game_hwnd);
+        s_lastGameHwnd = game_hwnd;
+    }
 }
-
-bool IsGameActive(); // Defined in bot_logic.cpp
 
 void RenderGUI()
 {
