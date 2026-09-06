@@ -260,13 +260,16 @@ void BotLogicLoop()
                                 POINT pt = { x, y };
                                 ClientToScreen(gameHwnd, &pt);
                                 SetCursorPos(pt.x, pt.y);
-                                INPUT input = { 0 };
-                                input.type = INPUT_MOUSE;
-                                input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-                                SendInput(1, &input, sizeof(INPUT));
-                                std::this_thread::sleep_for(std::chrono::milliseconds(30)); // very short, just enough for game to register
-                                input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
-                                SendInput(1, &input, sizeof(INPUT));
+                                
+                                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                                
+                                // Use PostMessage for clicking (more reliable in some UE5 configurations)
+                                LPARAM lParam = MAKELPARAM(x, y);
+                                PostMessage(gameHwnd, WM_LBUTTONDOWN, MK_LBUTTON, lParam);
+                                
+                                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                                
+                                PostMessage(gameHwnd, WM_LBUTTONUP, 0, lParam);
                             };
 
                             if (distrib_step == D_SELECT) {

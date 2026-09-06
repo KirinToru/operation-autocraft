@@ -286,16 +286,20 @@ bool IsGaugeSliceBlue(const Point2D& pos)
     int start_y = max(0, pos.y - 5);
     int end_y = pos.y + 5;
 
+    int cyan_hits = 0;
     for (int y = start_y; y <= end_y; ++y) {
         for (int x = start_x; x <= end_x; ++x) {
             PixelColor c = GetPixel(x, y);
-            // Light blue: high blue and green, relatively lower red
-            if (c.b > 150 && c.g > 150 && c.r < c.b - 20) {
-                return true;
+            // Stricter cyan/blue check for the gauge
+            if (c.b > 180 && c.g > 140 && c.r < 130) {
+                cyan_hits++;
             }
         }
     }
-    return false;
+    
+    // Require at least 15 pixels in the 11x11 area to be cyan
+    // This prevents stray background pixels from triggering it
+    return cyan_hits >= 15;
 }
 
 bool IsPinkApproaching(const Point2D& pos)
