@@ -69,6 +69,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return 0; // Exit current instance, allowing elevated one to run
     }
 
+    // Prevent the system and display from sleeping while the application is running
+    SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED);
+
     // Set up window class
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, _T("AutocraftOverlayClass"), nullptr };
     ::RegisterClassEx(&wc);
@@ -203,6 +206,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     ::DestroyWindow(hwnd);
     ::UnregisterClass(wc.lpszClassName, wc.hInstance);
+
+    // Restore sleep and display power states to normal
+    SetThreadExecutionState(ES_CONTINUOUS);
 
     return 0;
 }
