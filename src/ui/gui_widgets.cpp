@@ -107,6 +107,68 @@ bool ActionConfirmButton(const char* label, const ImVec2& size_arg, ImU32 bgCol)
     return pressed;
 }
 
+bool SupportConfirmButton(const char* label, ImTextureID icon_tex, const ImVec2& size_arg, ImU32 bgCol)
+{
+    ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
+    ImVec2 size = size_arg;
+    if (size.x <= 0.0f) size.x = label_size.x + ImGui::GetStyle().FramePadding.x * 2.0f + 30.0f; // Extra space for icon
+    if (size.y <= 0.0f) size.y = label_size.y + ImGui::GetStyle().FramePadding.y * 2.0f;
+    
+    ImVec2 pos = ImGui::GetCursorScreenPos();
+    ImGuiID id = ImGui::GetID(label);
+    bool pressed = ImGui::InvisibleButton(label, size);
+    bool hovered = ImGui::IsItemHovered();
+    bool held = ImGui::IsItemActive();
+    
+    static std::map<ImGuiID, float> anim_map;
+    float& t = anim_map[id];
+    
+    if (hovered || held) {
+        t += ImGui::GetIO().DeltaTime * 5.0f;
+        if (t > 1.0f) t = 1.0f;
+    } else {
+        t -= ImGui::GetIO().DeltaTime * 5.0f;
+        if (t < 0.0f) t = 0.0f;
+    }
+
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    ImVec2 bbMin = pos;
+    ImVec2 bbMax = ImVec2(pos.x + size.x, pos.y + size.y);
+    
+    ImU32 textCol = IM_COL32(10, 10, 10, 255); // #0a0a0a text (matches CyanActionButton)
+
+    draw_list->AddRectFilled(bbMin, bbMax, bgCol);
+    
+    // Fill animation with gray
+    if (t > 0.0f)
+    {
+        ImVec2 fillMax = ImVec2(bbMin.x + size.x * t, bbMax.y);
+        draw_list->AddRectFilled(bbMin, fillMax, IM_COL32(200, 200, 200, 255)); // Light gray
+    }
+    
+    // Draw thin white border (0.2px)
+    draw_list->AddRect(bbMin, bbMax, IM_COL32(255, 255, 255, 120), 0.0f, 0, 0.2f);
+    
+    // Calculate layout to center the text exactly
+    float icon_size = 20.0f;
+    float icon_padding = 8.0f;
+    
+    ImVec2 textPos = ImVec2(bbMin.x + (size.x - label_size.x) * 0.5f, bbMin.y + (size.y - label_size.y) * 0.5f);
+    
+    // Draw Icon (Texture) to the left of the centered text
+    ImVec2 cMin(textPos.x - icon_size - icon_padding, bbMin.y + (size.y - icon_size) * 0.5f);
+    ImVec2 cMax(cMin.x + icon_size, cMin.y + icon_size);
+    if (icon_tex)
+    {
+        draw_list->AddImage(icon_tex, cMin, cMax);
+    }
+    
+    // Draw text
+    draw_list->AddText(textPos, textCol, label);
+
+    return pressed;
+}
+
 bool MenuSelectButton(const char* label, bool active, const ImVec2& size_arg)
 {
     ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);

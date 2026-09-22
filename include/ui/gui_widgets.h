@@ -5,6 +5,7 @@
 
 bool GameStyleButton(const char* label, bool active, const ImVec2& size_arg = ImVec2(0, 0), bool hoverIsPink = false);
 bool ActionConfirmButton(const char* label, const ImVec2& size_arg = ImVec2(0,0), ImU32 bgCol = IM_COL32(248, 101, 128, 255));
+bool SupportConfirmButton(const char* label, ImTextureID icon_tex, const ImVec2& size_arg = ImVec2(0,0), ImU32 bgCol = IM_COL32(240, 175, 20, 255));
 bool MenuSelectButton(const char* label, bool active, const ImVec2& size_arg = ImVec2(0, 0));
 bool MenuSelectButtonWithBind(const char* label, const char* bindStr, bool active, const ImVec2& size_arg = ImVec2(0, 0));
 void DrawGameStyleWindowBorder(ImU32 color = IM_COL32(106, 113, 113, 255));

@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include <windows.h>
+#include <shellapi.h>
 #include <string>
 #include <atomic>
 
@@ -10,6 +11,58 @@
 #include <map>
 #include "core/config.h"
 #include "bot/vision.h"
+#include <d3d11.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+extern ID3D11Device* g_pd3dDevice;
+ID3D11ShaderResourceView* g_KofiTexture = nullptr;
+bool g_KofiTextureLoaded = false;
+int g_KofiWidth = 0;
+int g_KofiHeight = 0;
+
+bool LoadTextureFromFile(const char* filename, ID3D11Device* d3dDevice, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height)
+{
+    int image_width = 0;
+    int image_height = 0;
+    unsigned char* image_data = stbi_load(filename, &image_width, &image_height, NULL, 4);
+    if (image_data == NULL) return false;
+
+    D3D11_TEXTURE2D_DESC desc;
+    ZeroMemory(&desc, sizeof(desc));
+    desc.Width = image_width;
+    desc.Height = image_height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    desc.CPUAccessFlags = 0;
+
+    ID3D11Texture2D* pTexture = NULL;
+    D3D11_SUBRESOURCE_DATA subResource;
+    subResource.pSysMem = image_data;
+    subResource.SysMemPitch = desc.Width * 4;
+    subResource.SysMemSlicePitch = 0;
+    d3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+    ZeroMemory(&srvDesc, sizeof(srvDesc));
+    srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels = desc.MipLevels;
+    srvDesc.Texture2D.MostDetailedMip = 0;
+    d3dDevice->CreateShaderResourceView(pTexture, &srvDesc, out_srv);
+    pTexture->Release();
+
+    *out_width = image_width;
+    *out_height = image_height;
+    stbi_image_free(image_data);
+
+    return true;
+}
 
 bool g_ShowMainMenu = true;
 bool g_ShowDiagnostics = false;
@@ -512,6 +565,22 @@ void RenderGUI()
             {
                 g_ShowKeybindings = !g_ShowKeybindings;
             }
+            
+            ImGui::Spacing();
+            if (!g_KofiTextureLoaded && g_pd3dDevice != nullptr)
+            {
+                g_KofiTextureLoaded = true; // prevent infinite loading attempts
+                // Try relative to project root first, then relative to build/Debug
+                if (!LoadTextureFromFile("assets/ko-fi/ko-fi_logo_128.png", g_pd3dDevice, &g_KofiTexture, &g_KofiWidth, &g_KofiHeight))
+                {
+                    LoadTextureFromFile("../../assets/ko-fi/ko-fi_logo_128.png", g_pd3dDevice, &g_KofiTexture, &g_KofiWidth, &g_KofiHeight);
+                }
+            }
+            if (SupportConfirmButton(LANGUAGE == "RU" ? "ПОДДЕРЖКА" : "SUPPORT", (ImTextureID)g_KofiTexture, ImVec2(350, 30)))
+            {
+                ShellExecuteA(0, 0, "https://ko-fi.com/kirintoru", 0, 0, SW_SHOW);
+            }
+            
             ImGui::Dummy(ImVec2(0, 10.0f));
         }
         ImGui::End();
