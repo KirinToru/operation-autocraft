@@ -9,6 +9,8 @@ ID3D11Device* v_pd3dDevice = nullptr;
 ID3D11DeviceContext* v_pd3dDeviceContext = nullptr;
 IDXGIOutputDuplication* v_pDuplication = nullptr;
 ID3D11Texture2D* v_pStagingTexture = nullptr;
+int v_ScreenWidth = 1920;
+int v_ScreenHeight = 1080;
 
 bool InitVision()
 {
@@ -43,6 +45,8 @@ bool InitVision()
     // Create a staging texture to copy the screen data to CPU
     DXGI_OUTDUPL_DESC dupDesc;
     v_pDuplication->GetDesc(&dupDesc);
+    v_ScreenWidth = (int)dupDesc.ModeDesc.Width;
+    v_ScreenHeight = (int)dupDesc.ModeDesc.Height;
 
     D3D11_TEXTURE2D_DESC texDesc;
     texDesc.Width = dupDesc.ModeDesc.Width;
@@ -111,6 +115,7 @@ bool CaptureFrame()
 PixelColor GetPixel(int x, int y)
 {
     if (!mappedScreen.pData) return {0,0,0,0};
+    if (x < 0 || y < 0 || x >= v_ScreenWidth || y >= v_ScreenHeight) return {0,0,0,0};
     // Format is typically BGRA
     unsigned char* pBytes = (unsigned char*)mappedScreen.pData;
     int offset = y * mappedScreen.RowPitch + x * 4;
@@ -143,9 +148,20 @@ bool area_has_heart_prompt()
 bool area_has_start_prompt()
 {
     struct Point { int x, y; };
-    Point points[] = {
-        {393, 915}, {396, 915}, {420, 887}, {447, 915}, {420, 943}
-    };
+    Point points[5];
+    if (MALE_BAR_END_POS.x != 0 || MALE_BAR_END_POS.y != 0) {
+        points[0] = { MALE_BAR_END_POS.x + 40, MALE_BAR_END_POS.y - 2 };
+        points[1] = { MALE_BAR_END_POS.x + 43, MALE_BAR_END_POS.y - 2 };
+        points[2] = { MALE_BAR_END_POS.x + 67, MALE_BAR_END_POS.y - 30 };
+        points[3] = { MALE_BAR_END_POS.x + 94, MALE_BAR_END_POS.y - 2 };
+        points[4] = { MALE_BAR_END_POS.x + 67, MALE_BAR_END_POS.y + 26 };
+    } else {
+        points[0] = { 393, 915 };
+        points[1] = { 396, 915 };
+        points[2] = { 420, 887 };
+        points[3] = { 447, 915 };
+        points[4] = { 420, 943 };
+    }
     int hits = 0;
     for (const auto& p : points) {
         if (is_prompt_light(p.x, p.y)) hits++;
@@ -164,8 +180,9 @@ const char* GetMaleBarState()
 
     // 1. Check for Pink at the end point (if calibrated)
     if (MALE_BAR_END_POS.x != 0 || MALE_BAR_END_POS.y != 0) {
-        int e_start_x = max(0, MALE_BAR_END_POS.x - 10);
-        int e_end_x = MALE_BAR_END_POS.x + 10;
+        int e_radius = max(6, (int)std::round(10 * g_WindowScale));
+        int e_start_x = max(0, MALE_BAR_END_POS.x - e_radius);
+        int e_end_x = min(v_ScreenWidth - 1, MALE_BAR_END_POS.x + e_radius);
         int e_y = MALE_BAR_END_POS.y;
         for (int x = e_start_x; x <= e_end_x; ++x) {
             PixelColor c = GetPixel(x, e_y);
@@ -176,9 +193,17 @@ const char* GetMaleBarState()
         }
     }
 
-    // 2. Check general 300-pixel area around start point
-    int start_x = max(0, MALE_BAR_POS.x - 150);
-    int end_x = MALE_BAR_POS.x + 150;
+    // 2. Check area along male bar
+    int start_x = 0;
+    int end_x = 0;
+    if (MALE_BAR_END_POS.x != 0 && MALE_BAR_END_POS.x > MALE_BAR_POS.x) {
+        start_x = max(0, MALE_BAR_POS.x);
+        end_x = min(v_ScreenWidth - 1, MALE_BAR_END_POS.x);
+    } else {
+        int span = max(100, (int)std::round(150 * g_WindowScale));
+        start_x = max(0, MALE_BAR_POS.x - span);
+        end_x = min(v_ScreenWidth - 1, MALE_BAR_POS.x + span);
+    }
     int y = MALE_BAR_POS.y;
 
     for (int x = start_x; x <= end_x; ++x) {
@@ -197,7 +222,8 @@ const char* GetMaleBarState()
     }
 
     if (total_end > 0) {
-        if (pink_at_end >= 3) return "FULL_PINK";
+        int req_pink = max(2, (int)std::round(3 * g_WindowScale));
+        if (pink_at_end >= req_pink) return "FULL_PINK";
     } else {
         // Fallback if END POS is not calibrated (using old logic)
         if (pink_count > 0 && grey_count == 0) return "FULL_PINK"; 
@@ -215,11 +241,12 @@ bool IsFemaleArrowYellow()
 {
     if (FEMALE_ARROW_POS.x == 0 && FEMALE_ARROW_POS.y == 0) return false;
 
-    // Check a 20x20 area around the calibrated point for yellow
-    int start_x = max(0, FEMALE_ARROW_POS.x - 10);
-    int end_x = FEMALE_ARROW_POS.x + 10;
-    int start_y = max(0, FEMALE_ARROW_POS.y - 10);
-    int end_y = FEMALE_ARROW_POS.y + 10;
+    // Check area around the point for yellow, scaled to window resolution
+    int radius = max(8, (int)std::round(10 * g_WindowScale));
+    int start_x = max(0, FEMALE_ARROW_POS.x - radius);
+    int end_x = min(v_ScreenWidth - 1, FEMALE_ARROW_POS.x + radius);
+    int start_y = max(0, FEMALE_ARROW_POS.y - radius);
+    int end_y = min(v_ScreenHeight - 1, FEMALE_ARROW_POS.y + radius);
 
     for (int y = start_y; y <= end_y; ++y) {
         for (int x = start_x; x <= end_x; ++x) {
@@ -237,11 +264,12 @@ bool IsMaleArrowYellow()
 {
     if (MALE_ARROW_POS.x == 0 && MALE_ARROW_POS.y == 0) return false;
 
-    // Check a 20x20 area around the calibrated point for yellow
-    int start_x = max(0, MALE_ARROW_POS.x - 10);
-    int end_x = MALE_ARROW_POS.x + 10;
-    int start_y = max(0, MALE_ARROW_POS.y - 10);
-    int end_y = MALE_ARROW_POS.y + 10;
+    // Check area around the point for yellow, scaled to window resolution
+    int radius = max(8, (int)std::round(10 * g_WindowScale));
+    int start_x = max(0, MALE_ARROW_POS.x - radius);
+    int end_x = min(v_ScreenWidth - 1, MALE_ARROW_POS.x + radius);
+    int start_y = max(0, MALE_ARROW_POS.y - radius);
+    int end_y = min(v_ScreenHeight - 1, MALE_ARROW_POS.y + radius);
 
     for (int y = start_y; y <= end_y; ++y) {
         for (int x = start_x; x <= end_x; ++x) {
@@ -259,11 +287,12 @@ bool IsHeartButtonPresent()
 {
     if (HEART_L_POS.x == 0 && HEART_L_POS.y == 0) return area_has_heart_prompt(); // fallback to static
 
-    // Check a 30x30 area for the bright white hexagon border
-    int start_x = max(0, HEART_L_POS.x - 15);
-    int end_x = HEART_L_POS.x + 15;
-    int start_y = max(0, HEART_L_POS.y - 15);
-    int end_y = HEART_L_POS.y + 15;
+    // Check area for the bright white hexagon border, scaled to window resolution
+    int radius = max(10, (int)std::round(15 * g_WindowScale));
+    int start_x = max(0, HEART_L_POS.x - radius);
+    int end_x = min(v_ScreenWidth - 1, HEART_L_POS.x + radius);
+    int start_y = max(0, HEART_L_POS.y - radius);
+    int end_y = min(v_ScreenHeight - 1, HEART_L_POS.y + radius);
 
     for (int y = start_y; y <= end_y; ++y) {
         for (int x = start_x; x <= end_x; ++x) {
@@ -280,11 +309,12 @@ bool IsGaugeSliceBlue(const Point2D& pos)
 {
     if (pos.x == 0 && pos.y == 0) return false;
 
-    // Check a 10x10 area around the calibrated point for light blue
-    int start_x = max(0, pos.x - 5);
-    int end_x = pos.x + 5;
-    int start_y = max(0, pos.y - 5);
-    int end_y = pos.y + 5;
+    // Check area around the point for light blue, scaled to window resolution
+    int radius = max(4, (int)std::round(5 * g_WindowScale));
+    int start_x = max(0, pos.x - radius);
+    int end_x = min(v_ScreenWidth - 1, pos.x + radius);
+    int start_y = max(0, pos.y - radius);
+    int end_y = min(v_ScreenHeight - 1, pos.y + radius);
 
     int cyan_hits = 0;
     for (int y = start_y; y <= end_y; ++y) {
@@ -297,9 +327,9 @@ bool IsGaugeSliceBlue(const Point2D& pos)
         }
     }
     
-    // Require at least 15 pixels in the 11x11 area to be cyan
-    // This prevents stray background pixels from triggering it
-    return cyan_hits >= 15;
+    int total_pixels = (end_x - start_x + 1) * (end_y - start_y + 1);
+    int required_hits = max(4, (int)std::round(total_pixels * 0.12f));
+    return cyan_hits >= required_hits;
 }
 
 bool IsPinkApproaching(const Point2D& pos)

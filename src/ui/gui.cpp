@@ -407,18 +407,18 @@ void RenderGUI()
                 ImGui::Text("%s", text);
             };
             
-            bool p1Set = (PLAYER_POSITIONS[0].x != 0 || PLAYER_POSITIONS[0].y != 0);
-            bool p2Set = (PLAYER_POSITIONS[1].x != 0 || PLAYER_POSITIONS[1].y != 0);
-            bool p3Set = (PLAYER_POSITIONS[2].x != 0 || PLAYER_POSITIONS[2].y != 0);
-            bool l1Set = (LIKE_POSITIONS[0].x != 0 || LIKE_POSITIONS[0].y != 0);
-            bool l2Set = (LIKE_POSITIONS[1].x != 0 || LIKE_POSITIONS[1].y != 0);
-            bool l3Set = (LIKE_POSITIONS[2].x != 0 || LIKE_POSITIONS[2].y != 0);
-            bool gsSet = (GAUGE_POS_FIRST.x != 0 || GAUGE_POS_FIRST.y != 0);
-            bool geSet = (GAUGE_POS_LAST.x != 0 || GAUGE_POS_LAST.y != 0);
-            bool mbSet = (MALE_BAR_POS.x != 0 || MALE_BAR_POS.y != 0);
-            bool maSet = (MALE_ARROW_POS.x != 0 || MALE_ARROW_POS.y != 0);
-            bool faSet = (FEMALE_ARROW_POS.x != 0 || FEMALE_ARROW_POS.y != 0);
-            bool htSet = (HEART_L_POS.x != 0 || HEART_L_POS.y != 0);
+            bool p1Set = (MANUAL_PLAYER_POSITIONS[0].x != 0 || MANUAL_PLAYER_POSITIONS[0].y != 0);
+            bool p2Set = (MANUAL_PLAYER_POSITIONS[1].x != 0 || MANUAL_PLAYER_POSITIONS[1].y != 0);
+            bool p3Set = (MANUAL_PLAYER_POSITIONS[2].x != 0 || MANUAL_PLAYER_POSITIONS[2].y != 0);
+            bool l1Set = (MANUAL_LIKE_POSITIONS[0].x != 0 || MANUAL_LIKE_POSITIONS[0].y != 0);
+            bool l2Set = (MANUAL_LIKE_POSITIONS[1].x != 0 || MANUAL_LIKE_POSITIONS[1].y != 0);
+            bool l3Set = (MANUAL_LIKE_POSITIONS[2].x != 0 || MANUAL_LIKE_POSITIONS[2].y != 0);
+            bool gsSet = (MANUAL_GAUGE_POS_FIRST.x != 0 || MANUAL_GAUGE_POS_FIRST.y != 0);
+            bool geSet = (MANUAL_GAUGE_POS_LAST.x != 0 || MANUAL_GAUGE_POS_LAST.y != 0);
+            bool mbSet = (MANUAL_MALE_BAR_POS.x != 0 || MANUAL_MALE_BAR_POS.y != 0);
+            bool maSet = (MANUAL_MALE_ARROW_POS.x != 0 || MANUAL_MALE_ARROW_POS.y != 0);
+            bool faSet = (MANUAL_FEMALE_ARROW_POS.x != 0 || MANUAL_FEMALE_ARROW_POS.y != 0);
+            bool htSet = (MANUAL_HEART_L_POS.x != 0 || MANUAL_HEART_L_POS.y != 0);
             
             DrawCalibItem(0,  (std::string("[") + KeyBindToString(BIND_CALIB_P1) + "] Позиция игрока 1").c_str(),        (std::string("[") + KeyBindToString(BIND_CALIB_P1) + "] Player 1 Position").c_str(),      p1Set);
             DrawCalibItem(1,  (std::string("[") + KeyBindToString(BIND_CALIB_P2) + "] Позиция игрока 2").c_str(),        (std::string("[") + KeyBindToString(BIND_CALIB_P2) + "] Player 2 Position").c_str(),      p2Set);
@@ -429,7 +429,7 @@ void RenderGUI()
             DrawCalibItem(6,  (std::string("[") + KeyBindToString(BIND_CALIB_GAUGE_START) + "] Начало шкалы ИДЕИ").c_str(),      (std::string("[") + KeyBindToString(BIND_CALIB_GAUGE_START) + "] IDEA Start").c_str(),       gsSet);
             DrawCalibItem(7,  (std::string("[") + KeyBindToString(BIND_CALIB_GAUGE_END) + "] Конец шкалы ИДЕИ").c_str(),       (std::string("[") + KeyBindToString(BIND_CALIB_GAUGE_END) + "] IDEA Stop").c_str(),        geSet);
             DrawCalibItem(8,  (std::string("[") + KeyBindToString(BIND_CALIB_MALE_BAR) + "] Муж. полоса стамины (начало)").c_str(),  (std::string("[") + KeyBindToString(BIND_CALIB_MALE_BAR) + "] Male Stamina Bar (Start)").c_str(),       mbSet);
-            DrawCalibItem(9,  (std::string("[") + KeyBindToString(BIND_CALIB_MEND) + "] Муж. полоса стамины (конец)").c_str(), (std::string("[") + KeyBindToString(BIND_CALIB_MEND) + "] Male Stamina Bar (End)").c_str(),  (MALE_BAR_END_POS.x != 0 || MALE_BAR_END_POS.y != 0));
+            DrawCalibItem(9,  (std::string("[") + KeyBindToString(BIND_CALIB_MEND) + "] Муж. полоса стамины (конец)").c_str(), (std::string("[") + KeyBindToString(BIND_CALIB_MEND) + "] Male Stamina Bar (End)").c_str(),  (MANUAL_MALE_BAR_END_POS.x != 0 || MANUAL_MALE_BAR_END_POS.y != 0));
             DrawCalibItem(10,  (std::string("[") + KeyBindToString(BIND_CALIB_MALE_ARROW) + "] Мужская стрелка стамины").c_str(), (std::string("[") + KeyBindToString(BIND_CALIB_MALE_ARROW) + "] Male Stamina Arrow").c_str(),     maSet);
             DrawCalibItem(11, (std::string("[") + KeyBindToString(BIND_CALIB_FEMALE_ARROW) + "] Женская стрелка стамины").c_str(), (std::string("[") + KeyBindToString(BIND_CALIB_FEMALE_ARROW) + "] Female Stamina Arrow").c_str(),   faSet);
             DrawCalibItem(12, (std::string("[") + KeyBindToString(BIND_CALIB_HEART) + "] Кнопка сердца").c_str(),           (std::string("[") + KeyBindToString(BIND_CALIB_HEART) + "] Heart Button").c_str(),           htSet);
@@ -449,11 +449,14 @@ void RenderGUI()
             // Match the border color: IM_COL32(248, 101, 128, 255)
             if (ActionConfirmButton(LANGUAGE == "RU" ? "СБРОС" : "RESET", ImVec2(btnWidth, btnHeight), IM_COL32(248, 101, 128, 255)))
             {
-                for (int i=0; i<3; ++i) { PLAYER_POSITIONS[i] = {0,0}; LIKE_POSITIONS[i] = {0,0}; }
-                GAUGE_POS_FIRST = {0, 0}; GAUGE_POS_LAST = {0, 0};
-                MALE_BAR_POS = {0, 0}; MALE_BAR_END_POS = {0, 0};
-                MALE_ARROW_POS = {0, 0}; FEMALE_ARROW_POS = {0, 0};
-                HEART_L_POS = {0, 0};
+                for (int i=0; i<3; ++i) { MANUAL_PLAYER_POSITIONS[i] = {0,0}; MANUAL_LIKE_POSITIONS[i] = {0,0}; }
+                MANUAL_GAUGE_POS_FIRST = {0, 0}; MANUAL_GAUGE_POS_LAST = {0, 0};
+                MANUAL_MALE_BAR_POS = {0, 0}; MANUAL_MALE_BAR_END_POS = {0, 0};
+                MANUAL_MALE_ARROW_POS = {0, 0}; MANUAL_FEMALE_ARROW_POS = {0, 0};
+                MANUAL_HEART_L_POS = {0, 0};
+                if (!auto_detect_coords) {
+                    RestoreManualCoordinates();
+                }
                 SaveConfig();
             }
             
@@ -462,6 +465,9 @@ void RenderGUI()
             if (ActionConfirmButton(LANGUAGE == "RU" ? "ПОДТВЕРДИТЬ" : "CONFIRM", ImVec2(btnWidth, btnHeight), IM_COL32(240, 175, 20, 255)))
             {
                 g_CalibrationMode = false;
+                auto_detect_coords = false;
+                RestoreManualCoordinates();
+                SaveConfig();
             }
             
             ImGui::Dummy(ImVec2(10.0f, 10.0f));
@@ -594,11 +600,30 @@ void RenderGUI()
             bool speedChanged = CustomSliderInt(LANGUAGE == "RU" ? "Скорость клика" : "Click Speed", &CLICK_SPEED_MS, 1, 3000, "%d ms");
             if (speedChanged) SaveConfig();
             
+            ImGui::Spacing();
+            if (CustomCheckbox(LANGUAGE == "RU" ? "Авто-вычисление координат" : "Auto-detect Coordinates", &auto_detect_coords))
+            {
+                if (auto_detect_coords)
+                {
+                    UpdateAutoCoordinates(GetGameWindow());
+                    AddLog(LANGUAGE == "RU" ? "Автоопределение координат включено." : "Auto-detect coordinates enabled.");
+                }
+                else
+                {
+                    RestoreManualCoordinates();
+                    AddLog(LANGUAGE == "RU" ? "Ручная калибровка координат включена." : "Manual calibration mode enabled.");
+                }
+                SaveConfig();
+            }
+
             ImGui::Dummy(ImVec2(0, 15.0f));
             
             if (CyanActionButton(LANGUAGE == "RU" ? "НАЧАТЬ КАЛИБРОВКУ" : "START CALIBRATION", ImVec2(350, 30)))
             {
                 g_CalibrationMode = true;
+                auto_detect_coords = false;
+                RestoreManualCoordinates();
+                SaveConfig();
                 AddLog(LANGUAGE == "RU" ? "Режим калибровки запущен." : "Calibration mode started.");
             }
             
@@ -729,6 +754,9 @@ void RenderGUI()
             ImGui::Text(LANGUAGE == "RU" ? "\u0426\u0432\u0435\u0442 \u043c\u0443\u0436\u0441\u043a\u043e\u0439 \u043f\u043e\u043b\u043e\u0441\u044b: %s" : "Male Bar Color: %s", TranslateMaleBarColor(g_MaleBarColor).c_str());
             ImGui::SetCursorPosX(10.0f);
             ImGui::Text(LANGUAGE == "RU" ? "\u0421\u0442\u0430\u0442\u0443\u0441 \u0430\u0432\u0442\u043e-\u043b\u0430\u0439\u043a\u043e\u0432: %s" : "Auto-Likes Status: %s", TranslateLikesStatus(g_LikesStatus).c_str());
+            ImGui::SetCursorPosX(10.0f);
+            ImGui::Text(LANGUAGE == "RU" ? "Режим координат: %s" : "Coordinates: %s",
+                auto_detect_coords ? (LANGUAGE == "RU" ? "АВТО (РАЗМЕР ОКНА)" : "AUTO (WINDOW)") : (LANGUAGE == "RU" ? "РУЧНАЯ КАЛИБРОВКА" : "MANUAL CALIBRATION"));
 
             ImGui::SetCursorPosX(10.0f);
             ImGui::Spacing();

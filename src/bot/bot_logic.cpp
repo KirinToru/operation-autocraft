@@ -107,6 +107,11 @@ void BotLogicLoop()
     while (g_bRunning)
     {
         HWND gameHwnd = GetGameWindow();
+        if (auto_detect_coords)
+        {
+            UpdateAutoCoordinates(gameHwnd);
+        }
+
         if (!bot_enabled || !gameHwnd || g_CalibrationMode)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(50));

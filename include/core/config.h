@@ -1,4 +1,5 @@
 #pragma once
+#include <windows.h>
 #include <vector>
 #include <string>
 
@@ -14,6 +15,8 @@ extern bool auto_l;
 extern bool auto_likes;
 extern int num_players;
 extern bool mode_immediate;
+extern bool auto_detect_coords;
+extern float g_WindowScale;
 
 extern int VISION_POLL_RATE_MS;
 extern int CLICK_SPEED_MS;
@@ -21,6 +24,7 @@ extern int CLICK_SPEED_MS;
 extern int GAUGE_THRESHOLD;
 extern std::string LANGUAGE;
 
+// Active coordinates used by bot logic and vision
 extern Point2D PLAYER_POSITIONS[4];
 extern Point2D LIKE_POSITIONS[4];
 
@@ -31,6 +35,22 @@ extern Point2D MALE_BAR_END_POS;
 extern Point2D MALE_ARROW_POS;
 extern Point2D FEMALE_ARROW_POS;
 extern Point2D HEART_L_POS;
+
+// Stored manual calibration coordinates
+extern Point2D MANUAL_PLAYER_POSITIONS[4];
+extern Point2D MANUAL_LIKE_POSITIONS[4];
+
+extern Point2D MANUAL_GAUGE_POS_FIRST;
+extern Point2D MANUAL_GAUGE_POS_LAST;
+extern Point2D MANUAL_MALE_BAR_POS;
+extern Point2D MANUAL_MALE_BAR_END_POS;
+extern Point2D MANUAL_MALE_ARROW_POS;
+extern Point2D MANUAL_FEMALE_ARROW_POS;
+extern Point2D MANUAL_HEART_L_POS;
+
+HWND GetGameWindow();
+void UpdateAutoCoordinates(HWND gameHwnd);
+void RestoreManualCoordinates();
 
 struct KeyBind {
     int vkCode;

@@ -1,6 +1,7 @@
 #include "core/config.h"
 #include <fstream>
 #include <iostream>
+#include <cmath>
 #include <windows.h>
 #include "nlohmann/json.hpp"
 
@@ -11,23 +12,139 @@ bool bot_enabled = false;
 bool auto_j = false;
 bool auto_l = false;
 bool auto_likes = false;
+bool auto_detect_coords = true;
+float g_WindowScale = 1.0f;
 
 int VISION_POLL_RATE_MS = 50;
 int CLICK_SPEED_MS = 1;
 
 int GAUGE_THRESHOLD = 200;
-std::string LANGUAGE = "EN"; // Can be EN, PL
+std::string LANGUAGE = "EN"; // Supported: EN, RU
 
-Point2D PLAYER_POSITIONS[4] = { {0,0}, {0,0}, {0,0}, {0,0} };
-Point2D LIKE_POSITIONS[4] = { {0,0}, {0,0}, {0,0}, {0,0} };
+// Reference 1920x1080 manual calibration points
+Point2D MANUAL_PLAYER_POSITIONS[4] = { {79, 186}, {75, 302}, {76, 375}, {0, 0} };
+Point2D MANUAL_LIKE_POSITIONS[4] = { {73, 241}, {74, 315}, {73, 385}, {0, 0} };
 
-Point2D GAUGE_POS_FIRST = {0,0};
-Point2D GAUGE_POS_LAST = {0,0};
-Point2D MALE_BAR_POS = {0,0};
-Point2D MALE_BAR_END_POS = {0,0};
-Point2D MALE_ARROW_POS = {0,0};
-Point2D FEMALE_ARROW_POS = {0,0};
-Point2D HEART_L_POS = {0,0};
+Point2D MANUAL_GAUGE_POS_FIRST = { 1834, 33 };
+Point2D MANUAL_GAUGE_POS_LAST = { 1817, 33 };
+Point2D MANUAL_MALE_BAR_POS = { 138, 914 };
+Point2D MANUAL_MALE_BAR_END_POS = { 353, 917 };
+Point2D MANUAL_MALE_ARROW_POS = { 313, 922 };
+Point2D MANUAL_FEMALE_ARROW_POS = { 311, 822 };
+Point2D MANUAL_HEART_L_POS = { 460, 797 };
+
+// Active coordinates used by bot logic and vision
+Point2D PLAYER_POSITIONS[4] = { {79, 186}, {75, 302}, {76, 375}, {0, 0} };
+Point2D LIKE_POSITIONS[4] = { {73, 241}, {74, 315}, {73, 385}, {0, 0} };
+
+Point2D GAUGE_POS_FIRST = { 1834, 33 };
+Point2D GAUGE_POS_LAST = { 1817, 33 };
+Point2D MALE_BAR_POS = { 138, 914 };
+Point2D MALE_BAR_END_POS = { 353, 917 };
+Point2D MALE_ARROW_POS = { 313, 922 };
+Point2D FEMALE_ARROW_POS = { 311, 822 };
+Point2D HEART_L_POS = { 460, 797 };
+
+void RestoreManualCoordinates()
+{
+    for (int i = 0; i < 4; i++) {
+        PLAYER_POSITIONS[i] = MANUAL_PLAYER_POSITIONS[i];
+        LIKE_POSITIONS[i] = MANUAL_LIKE_POSITIONS[i];
+    }
+    GAUGE_POS_FIRST = MANUAL_GAUGE_POS_FIRST;
+    GAUGE_POS_LAST = MANUAL_GAUGE_POS_LAST;
+    MALE_BAR_POS = MANUAL_MALE_BAR_POS;
+    MALE_BAR_END_POS = MANUAL_MALE_BAR_END_POS;
+    MALE_ARROW_POS = MANUAL_MALE_ARROW_POS;
+    FEMALE_ARROW_POS = MANUAL_FEMALE_ARROW_POS;
+    HEART_L_POS = MANUAL_HEART_L_POS;
+}
+
+void UpdateAutoCoordinates(HWND gameHwnd)
+{
+    static int lastW = -1;
+    static int lastH = -1;
+    static int lastOriginX = -99999;
+    static int lastOriginY = -99999;
+    static HWND lastHwnd = nullptr;
+
+    int clientW = 1920;
+    int clientH = 1080;
+    POINT origin = { 0, 0 };
+
+    if (gameHwnd && IsWindow(gameHwnd))
+    {
+        RECT rc = {};
+        if (GetClientRect(gameHwnd, &rc))
+        {
+            int w = rc.right - rc.left;
+            int h = rc.bottom - rc.top;
+            if (w > 0 && h > 0)
+            {
+                clientW = w;
+                clientH = h;
+                ClientToScreen(gameHwnd, &origin);
+            }
+        }
+    }
+
+    if (clientW == lastW && clientH == lastH && origin.x == lastOriginX && origin.y == lastOriginY && gameHwnd == lastHwnd)
+    {
+        return;
+    }
+
+    lastW = clientW;
+    lastH = clientH;
+    lastOriginX = origin.x;
+    lastOriginY = origin.y;
+    lastHwnd = gameHwnd;
+
+    // UE UMG DPI scale is normalized to 1080p vertical resolution
+    float scale = (float)clientH / 1080.0f;
+    if (scale <= 0.0f) scale = 1.0f;
+    g_WindowScale = scale;
+
+    // Player portraits & Like buttons (Top-Left anchor) -> Client coordinates
+    PLAYER_POSITIONS[0] = { (int)std::round(79 * scale), (int)std::round(186 * scale) };
+    PLAYER_POSITIONS[1] = { (int)std::round(75 * scale), (int)std::round(302 * scale) };
+    PLAYER_POSITIONS[2] = { (int)std::round(76 * scale), (int)std::round(375 * scale) };
+    PLAYER_POSITIONS[3] = { 0, 0 };
+
+    LIKE_POSITIONS[0] = { (int)std::round(73 * scale), (int)std::round(241 * scale) };
+    LIKE_POSITIONS[1] = { (int)std::round(74 * scale), (int)std::round(315 * scale) };
+    LIKE_POSITIONS[2] = { (int)std::round(73 * scale), (int)std::round(385 * scale) };
+    LIKE_POSITIONS[3] = { 0, 0 };
+
+    // Gauge (Top-Right anchor) -> Screen coordinates
+    int g1_x = clientW - (int)std::round((1920 - 1834) * scale);
+    int g1_y = (int)std::round(33 * scale);
+    GAUGE_POS_FIRST = { origin.x + g1_x, origin.y + g1_y };
+
+    int g2_x = clientW - (int)std::round((1920 - 1817) * scale);
+    int g2_y = (int)std::round(33 * scale);
+    GAUGE_POS_LAST = { origin.x + g2_x, origin.y + g2_y };
+
+    // Stamina bars, arrows, Heart button (Bottom-Left anchor) -> Screen coordinates
+    int fa_x = (int)std::round(311 * scale);
+    int fa_y = clientH - (int)std::round((1080 - 822) * scale);
+    FEMALE_ARROW_POS = { origin.x + fa_x, origin.y + fa_y };
+
+    int ma_x = (int)std::round(313 * scale);
+    int ma_y = clientH - (int)std::round((1080 - 922) * scale);
+    MALE_ARROW_POS = { origin.x + ma_x, origin.y + ma_y };
+
+    int mb_x = (int)std::round(138 * scale);
+    int mb_y = clientH - (int)std::round((1080 - 914) * scale);
+    MALE_BAR_POS = { origin.x + mb_x, origin.y + mb_y };
+
+    int mbe_x = (int)std::round(353 * scale);
+    int mbe_y = clientH - (int)std::round((1080 - 917) * scale);
+    MALE_BAR_END_POS = { origin.x + mbe_x, origin.y + mbe_y };
+
+    int ht_x = (int)std::round(460 * scale);
+    int ht_y = clientH - (int)std::round((1080 - 797) * scale);
+    HEART_L_POS = { origin.x + ht_x, origin.y + ht_y };
+}
 
 KeyBind BIND_MENU_TOGGLE = { VK_INSERT, false, false, false };
 KeyBind BIND_APP_VISIBILITY = { VK_INSERT, true, false, false }; // Shift + Insert
@@ -81,6 +198,7 @@ void LoadConfig()
             nlohmann::json j;
             file >> j;
             
+            if (j.contains("auto_detect_coords")) auto_detect_coords = j["auto_detect_coords"];
             if (j.contains("LANGUAGE")) LANGUAGE = j["LANGUAGE"];
             if (j.contains("num_players")) num_players = j["num_players"];
             if (j.contains("mode_immediate")) mode_immediate = j["mode_immediate"];
@@ -101,23 +219,23 @@ void LoadConfig()
             
             if (j.contains("players")) {
                 for (size_t i = 0; i < j["players"].size() && i < 4; i++) {
-                    PLAYER_POSITIONS[i].x = j["players"][i]["x"];
-                    PLAYER_POSITIONS[i].y = j["players"][i]["y"];
+                    MANUAL_PLAYER_POSITIONS[i].x = j["players"][i]["x"];
+                    MANUAL_PLAYER_POSITIONS[i].y = j["players"][i]["y"];
                 }
             }
             if (j.contains("likes")) {
                 for (size_t i = 0; i < j["likes"].size() && i < 4; i++) {
-                    LIKE_POSITIONS[i].x = j["likes"][i]["x"];
-                    LIKE_POSITIONS[i].y = j["likes"][i]["y"];
+                    MANUAL_LIKE_POSITIONS[i].x = j["likes"][i]["x"];
+                    MANUAL_LIKE_POSITIONS[i].y = j["likes"][i]["y"];
                 }
             }
-            if (j.contains("gauge_first")) { GAUGE_POS_FIRST.x = j["gauge_first"]["x"]; GAUGE_POS_FIRST.y = j["gauge_first"]["y"]; }
-            if (j.contains("gauge_last")) { GAUGE_POS_LAST.x = j["gauge_last"]["x"]; GAUGE_POS_LAST.y = j["gauge_last"]["y"]; }
-            if (j.contains("male_bar")) { MALE_BAR_POS.x = j["male_bar"]["x"]; MALE_BAR_POS.y = j["male_bar"]["y"]; }
-            if (j.contains("male_bar_end")) { MALE_BAR_END_POS.x = j["male_bar_end"]["x"]; MALE_BAR_END_POS.y = j["male_bar_end"]["y"]; }
-            if (j.contains("male_arrow")) { MALE_ARROW_POS.x = j["male_arrow"]["x"]; MALE_ARROW_POS.y = j["male_arrow"]["y"]; }
-            if (j.contains("female_arrow")) { FEMALE_ARROW_POS.x = j["female_arrow"]["x"]; FEMALE_ARROW_POS.y = j["female_arrow"]["y"]; }
-            if (j.contains("heart_l")) { HEART_L_POS.x = j["heart_l"]["x"]; HEART_L_POS.y = j["heart_l"]["y"]; }
+            if (j.contains("gauge_first")) { MANUAL_GAUGE_POS_FIRST.x = j["gauge_first"]["x"]; MANUAL_GAUGE_POS_FIRST.y = j["gauge_first"]["y"]; }
+            if (j.contains("gauge_last")) { MANUAL_GAUGE_POS_LAST.x = j["gauge_last"]["x"]; MANUAL_GAUGE_POS_LAST.y = j["gauge_last"]["y"]; }
+            if (j.contains("male_bar")) { MANUAL_MALE_BAR_POS.x = j["male_bar"]["x"]; MANUAL_MALE_BAR_POS.y = j["male_bar"]["y"]; }
+            if (j.contains("male_bar_end")) { MANUAL_MALE_BAR_END_POS.x = j["male_bar_end"]["x"]; MANUAL_MALE_BAR_END_POS.y = j["male_bar_end"]["y"]; }
+            if (j.contains("male_arrow")) { MANUAL_MALE_ARROW_POS.x = j["male_arrow"]["x"]; MANUAL_MALE_ARROW_POS.y = j["male_arrow"]["y"]; }
+            if (j.contains("female_arrow")) { MANUAL_FEMALE_ARROW_POS.x = j["female_arrow"]["x"]; MANUAL_FEMALE_ARROW_POS.y = j["female_arrow"]["y"]; }
+            if (j.contains("heart_l")) { MANUAL_HEART_L_POS.x = j["heart_l"]["x"]; MANUAL_HEART_L_POS.y = j["heart_l"]["y"]; }
             
             LoadKeyBind(j, "bind_menu_toggle", BIND_MENU_TOGGLE);
             LoadKeyBind(j, "bind_app_visibility", BIND_APP_VISIBILITY);
@@ -144,12 +262,17 @@ void LoadConfig()
         }
     } catch (...) {
     }
+
+    if (!auto_detect_coords) {
+        RestoreManualCoordinates();
+    }
 }
 
 void SaveConfig()
 {
     try {
         nlohmann::json j;
+        j["auto_detect_coords"] = auto_detect_coords;
         j["bot_enabled"] = bot_enabled;
         j["auto_j"] = auto_j;
         j["auto_l"] = auto_l;
@@ -163,23 +286,23 @@ void SaveConfig()
 
         nlohmann::json players = nlohmann::json::array();
         for (int i = 0; i < 4; i++) {
-            players.push_back({{"x", PLAYER_POSITIONS[i].x}, {"y", PLAYER_POSITIONS[i].y}});
+            players.push_back({{"x", MANUAL_PLAYER_POSITIONS[i].x}, {"y", MANUAL_PLAYER_POSITIONS[i].y}});
         }
         j["players"] = players;
 
         nlohmann::json likes = nlohmann::json::array();
         for (int i = 0; i < 4; i++) {
-            likes.push_back({{"x", LIKE_POSITIONS[i].x}, {"y", LIKE_POSITIONS[i].y}});
+            likes.push_back({{"x", MANUAL_LIKE_POSITIONS[i].x}, {"y", MANUAL_LIKE_POSITIONS[i].y}});
         }
         j["likes"] = likes;
 
-        j["gauge_first"] = {{"x", GAUGE_POS_FIRST.x}, {"y", GAUGE_POS_FIRST.y}};
-        j["gauge_last"] = {{"x", GAUGE_POS_LAST.x}, {"y", GAUGE_POS_LAST.y}};
-        j["male_bar"] = {{"x", MALE_BAR_POS.x}, {"y", MALE_BAR_POS.y}};
-        j["male_bar_end"] = {{"x", MALE_BAR_END_POS.x}, {"y", MALE_BAR_END_POS.y}};
-        j["male_arrow"] = {{"x", MALE_ARROW_POS.x}, {"y", MALE_ARROW_POS.y}};
-        j["female_arrow"] = {{"x", FEMALE_ARROW_POS.x}, {"y", FEMALE_ARROW_POS.y}};
-        j["heart_l"] = {{"x", HEART_L_POS.x}, {"y", HEART_L_POS.y}};
+        j["gauge_first"] = {{"x", MANUAL_GAUGE_POS_FIRST.x}, {"y", MANUAL_GAUGE_POS_FIRST.y}};
+        j["gauge_last"] = {{"x", MANUAL_GAUGE_POS_LAST.x}, {"y", MANUAL_GAUGE_POS_LAST.y}};
+        j["male_bar"] = {{"x", MANUAL_MALE_BAR_POS.x}, {"y", MANUAL_MALE_BAR_POS.y}};
+        j["male_bar_end"] = {{"x", MANUAL_MALE_BAR_END_POS.x}, {"y", MANUAL_MALE_BAR_END_POS.y}};
+        j["male_arrow"] = {{"x", MANUAL_MALE_ARROW_POS.x}, {"y", MANUAL_MALE_ARROW_POS.y}};
+        j["female_arrow"] = {{"x", MANUAL_FEMALE_ARROW_POS.x}, {"y", MANUAL_FEMALE_ARROW_POS.y}};
+        j["heart_l"] = {{"x", MANUAL_HEART_L_POS.x}, {"y", MANUAL_HEART_L_POS.y}};
         
         SaveKeyBind(j, "bind_menu_toggle", BIND_MENU_TOGGLE);
         SaveKeyBind(j, "bind_app_visibility", BIND_APP_VISIBILITY);

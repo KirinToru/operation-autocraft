@@ -50,6 +50,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(nCmdShow);
     UNREFERENCED_PARAMETER(hInstance);
 
+    // Enable Per-Monitor V2 DPI Awareness for exact 1:1 pixel coordinates across all display scalings
+    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+
     if (!IsUserAnAdmin())
     {
         TCHAR szPath[MAX_PATH];

@@ -17,10 +17,12 @@ This tool has been completely rewritten in **C++** using **DirectX 11** and **De
 
 - **DirectX 11 ImGui Overlay**: Completely transparent, click-through overlay that seamlessly integrates with the game.
 - **Dynamic Click-Through**: The overlay intelligently passes mouse clicks to the game while allowing you to interact with its own floating menus.
+- **Auto-Resolution & Detection**: Automatically detects the game window size, position, and scales pixel coordinates dynamically (1080p, 1440p, 4K, ultrawide). Works out of the box without manual calibration!
 - **Auto-L (Hearts)**: Automatically presses the heart button when both male and female indicators turn yellow.
 - **Auto-J (Bars)**: Automatically manages excitement bars.
 - **Auto-Likes**: Intelligent liking system with two modes (Immediate and Accumulative) that scans the 10-segment gauge.
-- **Interactive Calibration Wizard**: Set up click coordinates and color-detection zones directly on your screen.
+- **Interactive Calibration Wizard**: Optional manual setup to customize click coordinates and detection zones directly on screen.
+- **Per-Monitor V2 DPI Awareness**: Ensures pixel-perfect alignment regardless of Windows desktop scaling (100%, 125%, 150%, etc.).
 - **Full Keybinding Customization**: Change any hotkey (keyboard and mouse buttons) directly from the GUI.
 - **Bilingual Interface**: Support for English and Russian (RU) languages.
 
@@ -33,12 +35,15 @@ This tool has been completely rewritten in **C++** using **DirectX 11** and **De
 
 ## Configuration & Calibration
 
-Settings are saved automatically in `settings.json` after running the calibration wizard. 
-To configure the bot for your specific resolution:
+Settings are saved automatically in `config.json`.
+
+By default, **Auto-detect Coordinates** is enabled in the **Settings** menu. The application automatically determines the game window position, resolution, and pixel coordinates without requiring manual calibration.
+
+If you prefer to manually map detection points for custom layouts:
 1. Open the **Settings** menu.
-2. Click **START CALIBRATION**.
+2. Toggle off **Auto-detect Coordinates** (or click **START CALIBRATION** directly).
 3. Follow the on-screen instructions, pressing the requested keys while hovering your mouse over the specific in-game UI elements.
-4. Press **ESC** to exit calibration.
+4. Press **ESC** or click **CONFIRM** to save and exit calibration.
 
 ## License
 

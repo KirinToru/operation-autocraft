@@ -111,21 +111,28 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
                     POINT pt;
                     GetCursorPos(&pt);
+                    POINT ptClient = pt;
+                    HWND gameHwnd = GetGameWindow();
+                    if (gameHwnd) ScreenToClient(gameHwnd, &ptClient);
+                    auto_detect_coords = false;
+
                     if (isLike)
                     {
-                        LIKE_POSITIONS[index].x = pt.x;
-                        LIKE_POSITIONS[index].y = pt.y;
+                        MANUAL_LIKE_POSITIONS[index].x = ptClient.x;
+                        MANUAL_LIKE_POSITIONS[index].y = ptClient.y;
+                        LIKE_POSITIONS[index] = MANUAL_LIKE_POSITIONS[index];
                         AddLog(LANGUAGE == "RU" ? 
-                            "Лайк " + std::to_string(index+1) + " сохранен: " + std::to_string(pt.x) + "," + std::to_string(pt.y) :
-                            "Like " + std::to_string(index+1) + " saved at: " + std::to_string(pt.x) + "," + std::to_string(pt.y));
+                            "Лайк " + std::to_string(index+1) + " сохранен: " + std::to_string(ptClient.x) + "," + std::to_string(ptClient.y) :
+                            "Like " + std::to_string(index+1) + " saved at: " + std::to_string(ptClient.x) + "," + std::to_string(ptClient.y));
                     }
                     else
                     {
-                        PLAYER_POSITIONS[index].x = pt.x;
-                        PLAYER_POSITIONS[index].y = pt.y;
+                        MANUAL_PLAYER_POSITIONS[index].x = ptClient.x;
+                        MANUAL_PLAYER_POSITIONS[index].y = ptClient.y;
+                        PLAYER_POSITIONS[index] = MANUAL_PLAYER_POSITIONS[index];
                         AddLog(LANGUAGE == "RU" ? 
-                            "Игрок " + std::to_string(index+1) + " сохранен: " + std::to_string(pt.x) + "," + std::to_string(pt.y) :
-                            "Player " + std::to_string(index+1) + " saved at: " + std::to_string(pt.x) + "," + std::to_string(pt.y));
+                            "Игрок " + std::to_string(index+1) + " сохранен: " + std::to_string(ptClient.x) + "," + std::to_string(ptClient.y) :
+                            "Player " + std::to_string(index+1) + " saved at: " + std::to_string(ptClient.x) + "," + std::to_string(ptClient.y));
                     }
                     SaveConfig();
                     return 1;
@@ -138,26 +145,34 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
                 {
                     POINT pt;
                     GetCursorPos(&pt);
+                    auto_detect_coords = false;
                     if (CheckBind(BIND_CALIB_GAUGE_START, pKey->vkCode)) {
-                        GAUGE_POS_FIRST.x = pt.x; GAUGE_POS_FIRST.y = pt.y;
+                        MANUAL_GAUGE_POS_FIRST.x = pt.x; MANUAL_GAUGE_POS_FIRST.y = pt.y;
+                        GAUGE_POS_FIRST = MANUAL_GAUGE_POS_FIRST;
                         AddLog(LANGUAGE == "RU" ? "Шкала ИДЕИ start сохранена." : "IDEA Gauge start saved.");
                     } else if (CheckBind(BIND_CALIB_GAUGE_END, pKey->vkCode)) {
-                        GAUGE_POS_LAST.x = pt.x; GAUGE_POS_LAST.y = pt.y;
+                        MANUAL_GAUGE_POS_LAST.x = pt.x; MANUAL_GAUGE_POS_LAST.y = pt.y;
+                        GAUGE_POS_LAST = MANUAL_GAUGE_POS_LAST;
                         AddLog(LANGUAGE == "RU" ? "Шкала ИДЕИ end сохранена." : "IDEA Gauge end saved.");
                     } else if (CheckBind(BIND_CALIB_MALE_BAR, pKey->vkCode)) {
-                        MALE_BAR_POS.x = pt.x; MALE_BAR_POS.y = pt.y;
+                        MANUAL_MALE_BAR_POS.x = pt.x; MANUAL_MALE_BAR_POS.y = pt.y;
+                        MALE_BAR_POS = MANUAL_MALE_BAR_POS;
                         AddLog(LANGUAGE == "RU" ? "Мужская шкала выносливости сохранена." : "Male Bar saved.");
                     } else if (CheckBind(BIND_CALIB_FEMALE_ARROW, pKey->vkCode)) {
-                        FEMALE_ARROW_POS.x = pt.x; FEMALE_ARROW_POS.y = pt.y;
+                        MANUAL_FEMALE_ARROW_POS.x = pt.x; MANUAL_FEMALE_ARROW_POS.y = pt.y;
+                        FEMALE_ARROW_POS = MANUAL_FEMALE_ARROW_POS;
                         AddLog(LANGUAGE == "RU" ? "Женская стрелка выносливости сохранена." : "Female Arrow saved.");
                     } else if (CheckBind(BIND_CALIB_HEART, pKey->vkCode)) {
-                        HEART_L_POS.x = pt.x; HEART_L_POS.y = pt.y;
+                        MANUAL_HEART_L_POS.x = pt.x; MANUAL_HEART_L_POS.y = pt.y;
+                        HEART_L_POS = MANUAL_HEART_L_POS;
                         AddLog(LANGUAGE == "RU" ? "Кнопка Сердце (L) сохранена." : "Heart Button (L) saved.");
                     } else if (CheckBind(BIND_CALIB_MALE_ARROW, pKey->vkCode)) {
-                        MALE_ARROW_POS.x = pt.x; MALE_ARROW_POS.y = pt.y;
+                        MANUAL_MALE_ARROW_POS.x = pt.x; MANUAL_MALE_ARROW_POS.y = pt.y;
+                        MALE_ARROW_POS = MANUAL_MALE_ARROW_POS;
                         AddLog(LANGUAGE == "RU" ? "Мужские стрелки выносливости сохранены." : "Male Arrow saved.");
                     } else if (CheckBind(BIND_CALIB_MEND, pKey->vkCode)) {
-                        MALE_BAR_END_POS.x = pt.x; MALE_BAR_END_POS.y = pt.y;
+                        MANUAL_MALE_BAR_END_POS.x = pt.x; MANUAL_MALE_BAR_END_POS.y = pt.y;
+                        MALE_BAR_END_POS = MANUAL_MALE_BAR_END_POS;
                         AddLog(LANGUAGE == "RU" ? "Мужская шкала (конец) сохранена." : "Male Bar (End) saved.");
                     }
                     SaveConfig();
